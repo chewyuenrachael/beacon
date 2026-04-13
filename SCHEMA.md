@@ -146,7 +146,60 @@ erDiagram
 - `context` jsonb
 - Rationale: Feeds Monday Workqueue and Quarterly Review attribution narrative.
 
+## Tables added by parallel agents
+
+### `events` (operational, owned by Event Toolkit agent)
+- `id` uuid primary key
+- `institution_id` text fk → institutions.id
+- `ambassador_id` uuid fk → ambassadors.id nullable
+- `event_type` text — enum: cafe_cursor / hackathon_sponsorship / 
+  workshop / lab_demo / professor_talk
+- `title` text not null
+- `scheduled_at` timestamptz
+- `status` text — draft / scheduled / completed / cancelled
+- `tracking_code` text unique — for attribution to signups
+- `attendee_count` int default 0
+- `notes` text
+- `created_at` timestamptz
+- Rationale: Event lifecycle entity. Tracking_code links event to 
+  downstream signups for activation attribution.
+
+### `event_attendees` (operational, owned by Event Toolkit agent)
+- `id` uuid primary key
+- `event_id` uuid fk → events.id
+- `email` text not null
+- `name` text nullable
+- `attended_at` timestamptz
+- `activated_at` timestamptz nullable — when they first used Cursor 
+  post-event
+- Rationale: Attendance log. Activated_at populated by post-event 
+  attribution job.
+
+### `resource_views` (audit, owned by Resource Hub agent)
+- `id` uuid primary key
+- `resource_slug` text — e.g., "cafe-cursor-playbook"
+- `viewer_id` text — ambassador uuid or "anonymous"
+- `viewed_at` timestamptz
+- `time_on_page_seconds` int nullable
+- Rationale: Track resource usage to detect dead content.
+
+### `verification_attempts` (operational, owned by Discount Provisioning agent)
+- `id` uuid primary key
+- `email` text not null
+- `country` text
+- `claimed_institution` text nullable
+- `sheerid_response_code` text
+- `status` text — pending / approved / rejected / manual_review
+- `reviewed_by` text nullable
+- `reviewed_at` timestamptz nullable
+- `notes` text
+- `created_at` timestamptz
+- Rationale: SheerID integration log + manual override workflow for 
+  edge cases (Indian/Romanian students, etc).
+
 ## What's immutable vs. re-derivable
 
 - **Immutable:** raw ingestion payloads (stored in observations with source), user-submitted content.
 - **Re-derivable:** every field on `professors`, `ambassadors`, `student_orgs`. Recompute from observations.
+
+
