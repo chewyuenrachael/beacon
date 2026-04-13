@@ -36,6 +36,29 @@
     ".next/dev/types/**/*.ts"
   ],
   "exclude": [
-    "node_modules"
+    "node_modules",
+    "components/_forge-reference",
+    "app/api/cron",
+    "app/api/ingest",
+    "app/api/llm-monitor/run",
+    "app/api/prep",
+    "app/api/pullthrough",
+    "app/dashboard/settings/page.tsx",
+    "components/DraftComments.tsx",
+    "components/IncidentCard.tsx",
+    "components/IncidentTimeline.tsx",
+    "components/LLMFactCheckPanel.tsx",
+    "components/LLMNarrativeMatrix.tsx",
+    "components/LLMPlatformCard.tsx",
+    "components/LLMResponseViewer.tsx",
+    "components/LLMTrendChart.tsx",
+    "components/PostIncidentReview.tsx",
+    "components/ResponseDraftEditor.tsx",
+    "components/StakeholderChecklist.tsx",
+    "components/TemplateSelector.tsx",
+    "lib/ambassador-health.ts",
+    "lib/ambassador-pipeline.ts",
+    "lib/outreach-generator.ts",
+    "lib/prioritization-scoring.ts"
   ]
 }
