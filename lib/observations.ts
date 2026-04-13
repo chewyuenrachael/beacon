@@ -1,119 +1,75 @@
-import crypto from 'crypto'
-import { getDb } from './db'
-import type { EventLog, EventType } from '@/types'
-import type { UserRole } from '@/lib/constants'
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { supabaseAdmin } from "@/lib/supabase";
+import type {
+  Observation,
+  ObservationSource,
+  ObservationType,
+} from "@/lib/types";
 
-// ─── Types ───────────────────────────────────────────────────────────
-
-interface LogEventInput {
-  eventType: EventType
-  entityType: string
-  entityId: string
-  actorRole?: UserRole | 'system'
-  payload?: Record<string, unknown>
-}
-
-// ─── Row Parser ──────────────────────────────────────────────────────
-
-function parseEventRow(row: Record<string, unknown>): EventLog {
-  let payload: Record<string, unknown> = {}
-  try {
-    payload = JSON.parse(row['payload'] as string) as Record<string, unknown>
-  } catch {
-    payload = {}
-  }
-
+function mapObservationRow(row: Record<string, unknown>): Observation {
   return {
-    id: row['id'] as string,
-    timestamp: row['timestamp'] as string,
-    event_type: row['event_type'] as EventType,
-    entity_type: row['entity_type'] as string,
-    entity_id: row['entity_id'] as string,
-    actor_role: row['actor_role'] as UserRole | 'system',
-    payload,
-  }
-}
-
-// ─── WRITE (append-only) ─────────────────────────────────────────────
-
-/**
- * Append an event to the immutable event log.
- * INSERT only — never update or delete event_log rows.
- * @param event - The event data to log
- */
-export function logEvent(event: LogEventInput): void {
-  const db = getDb()
-  const id = `evt_${crypto.randomUUID().slice(0, 8)}`
-  const actorRole = event.actorRole ?? 'system'
-  const payloadStr = event.payload ? JSON.stringify(event.payload) : '{}'
-
-  db.prepare(
-    `INSERT INTO event_log (id, event_type, entity_type, entity_id, actor_role, payload)
-     VALUES (?, ?, ?, ?, ?, ?)`
-  ).run(id, event.eventType, event.entityType, event.entityId, actorRole, payloadStr)
-}
-
-// ─── READ ────────────────────────────────────────────────────────────
-
-/**
- * Retrieve the most recent events across all types.
- * @param limit - Maximum number of events to return (default 50)
- * @returns Array of EventLog entries, newest first
- */
-export function getRecentEvents(limit: number = 50): EventLog[] {
-  const db = getDb()
-  const rows = db.prepare(
-    'SELECT * FROM event_log ORDER BY timestamp DESC LIMIT ?'
-  ).all(limit) as Record<string, unknown>[]
-  return rows.map(parseEventRow)
+    id: row.id as string,
+    entity_type: row.entity_type as Observation["entity_type"],
+    entity_id: row.entity_id as string,
+    observation_type: row.observation_type as ObservationType,
+    payload: (row.payload as Record<string, unknown>) ?? {},
+    source: row.source as ObservationSource,
+    source_url: (row.source_url as string | null) ?? undefined,
+    confidence: Number(row.confidence),
+    observed_at: row.observed_at as string,
+    created_at: row.created_at as string,
+  };
 }
 
 /**
- * Retrieve all events for a specific entity.
- * @param entityType - The type of entity (e.g., 'engagement', 'milestone')
- * @param entityId - The ID of the entity
- * @returns Array of EventLog entries for that entity, newest first
+ * Append-only observation write (service role).
  */
-export function getEventsByEntity(entityType: string, entityId: string): EventLog[] {
-  const db = getDb()
-  const rows = db.prepare(
-    'SELECT * FROM event_log WHERE entity_type = ? AND entity_id = ? ORDER BY timestamp DESC'
-  ).all(entityType, entityId) as Record<string, unknown>[]
-  return rows.map(parseEventRow)
+export async function logObservation(params: {
+  entity_type: Observation["entity_type"];
+  entity_id: string;
+  observation_type: ObservationType;
+  payload: Record<string, unknown>;
+  source: ObservationSource;
+  source_url?: string;
+  confidence: number;
+}): Promise<Observation> {
+  const { data, error } = await supabaseAdmin
+    .from("observations")
+    .insert({
+      entity_type: params.entity_type,
+      entity_id: params.entity_id,
+      observation_type: params.observation_type,
+      payload: params.payload,
+      source: params.source,
+      source_url: params.source_url ?? null,
+      confidence: params.confidence,
+    })
+    .select()
+    .single();
+
+  if (error) throw error;
+  return mapObservationRow(data as Record<string, unknown>);
 }
 
 /**
- * Retrieve events filtered by event type, optionally since a given date.
- * @param eventType - The event type to filter by
- * @param since - Optional ISO date string; only events on or after this timestamp are returned
- * @returns Array of matching EventLog entries, newest first
+ * Read observations for a professor (anon or service client).
  */
-export function getEventsByType(eventType: EventType, since?: string): EventLog[] {
-  const db = getDb()
+export async function listObservationsForProfessor(
+  client: SupabaseClient,
+  professorId: string,
+  options: { limit: number; ascending: boolean }
+): Promise<Observation[]> {
+  const q = client
+    .from("observations")
+    .select("*")
+    .eq("entity_type", "professor")
+    .eq("entity_id", professorId)
+    .order("observed_at", { ascending: options.ascending })
+    .limit(options.limit);
 
-  if (since) {
-    const rows = db.prepare(
-      'SELECT * FROM event_log WHERE event_type = ? AND timestamp >= ? ORDER BY timestamp DESC'
-    ).all(eventType, since) as Record<string, unknown>[]
-    return rows.map(parseEventRow)
-  }
-
-  const rows = db.prepare(
-    'SELECT * FROM event_log WHERE event_type = ? ORDER BY timestamp DESC'
-  ).all(eventType) as Record<string, unknown>[]
-  return rows.map(parseEventRow)
-}
-
-/**
- * Retrieve recent events formatted for the Operations dashboard activity feed.
- * Parses payload JSON for display.
- * @param limit - Maximum number of events to return (default 25)
- * @returns Array of EventLog entries, newest first
- */
-export function getActivityFeed(limit: number = 25): EventLog[] {
-  const db = getDb()
-  const rows = db.prepare(
-    'SELECT * FROM event_log ORDER BY timestamp DESC LIMIT ?'
-  ).all(limit) as Record<string, unknown>[]
-  return rows.map(parseEventRow)
+  const { data, error } = await q;
+  if (error) throw error;
+  return (data ?? []).map((row) =>
+    mapObservationRow(row as Record<string, unknown>)
+  );
 }
