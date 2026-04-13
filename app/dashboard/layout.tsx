@@ -8,6 +8,7 @@ import { createBrowserClient } from "@supabase/ssr";
 const NAV_ITEMS = [
   { href: "/dashboard/warroom", label: "War Room" },
   { href: "/dashboard/brief", label: "Brief" },
+  { href: "/dashboard/ambassadors", label: "Ambassadors" },
   { href: "/dashboard", label: "Feed" },
   { href: "/dashboard/tensions", label: "Tensions" },
   { href: "/dashboard/competitors", label: "Competitors" },
