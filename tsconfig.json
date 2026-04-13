@@ -56,8 +56,6 @@
     "components/ResponseDraftEditor.tsx",
     "components/StakeholderChecklist.tsx",
     "components/TemplateSelector.tsx",
-    "lib/ambassador-health.ts",
-    "lib/ambassador-pipeline.ts",
     "lib/outreach-generator.ts",
     "lib/prioritization-scoring.ts"
   ]
