@@ -117,6 +117,19 @@ export interface Ambassador {
 }
 ```
 
+## Type file ownership
+
+Each parallel agent owns one file in `lib/types/`:
+
+- `lib/types/beacon-core.ts` — shared core types (`Observation`, `Professor`, `Institution`). Modifications require coordination.
+- `lib/types/ambassador.ts` — owned by Ambassador Pipeline agent
+- `lib/types/event.ts` — owned by Event Toolkit agent
+- `lib/types/resource.ts` — owned by Resource Hub agent
+- `lib/types/discount.ts` — owned by Discount Provisioning agent
+- `lib/types/intelligence.ts` — owned by Strategic Intelligence agents
+
+All files re-export through `lib/types.ts`. Never modify a file you do not own.
+
 ## Keyword list for recent_relevant_papers_count
 
 When matching paper abstracts, count papers whose title OR abstract contain ANY of:
