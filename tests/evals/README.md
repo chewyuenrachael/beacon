@@ -8,22 +8,27 @@ Intelligence tools fail silently. A classifier at 60% still produces outputs. Th
 
 ### `professors-20.json`
 
-20 real professors across MIT, Stanford, CMU, Berkeley, Columbia. Each entry has hand-validated expected values.
+Twenty real professors across MIT, Stanford, CMU, Berkeley, and Columbia. Each entry includes:
+
+- `id` — slug used as `professors.id` during eval
+- `institution_id` — one of `mit`, `stanford`, `cmu`, `berkeley`, `columbia`
+- `name`, `arxiv_author_id` — passed to `fetchRecentPapers` / DB (phrase or `search_query` with `:` per [`lib/sources/arxiv.ts`](../../lib/sources/arxiv.ts))
+- `expected_count` — hand-computed `recent_relevant_papers_count` (top 20 arXiv papers, same keyword + 24‑month rules as [`lib/professor-enrichment.ts`](../../lib/professor-enrichment.ts))
+- `verify_needed` — if `true`, row is excluded from accuracy (ambiguous arXiv author); still runs `enrichProfessor` for smoke
+- `notes` — one-line context
 
 ```json
 {
+  "version": 1,
   "professors": [
     {
-      "id": "sasha-rush",
-      "institution_id": "cornell",
-      "name": "Alexander Rush",
-      "arxiv_author_id": "rush_a_1",
-      "expected": {
-        "recent_relevant_papers_count": 8,
-        "ai_stance_quote": null,
-        "public_statements_count": 2
-      },
-      "notes": "NLP focus, many recent LLM papers, Cornell Tech NYC"
+      "id": "graham-neubig",
+      "institution_id": "cmu",
+      "name": "Graham Neubig",
+      "arxiv_author_id": "Graham Neubig",
+      "expected_count": 16,
+      "verify_needed": false,
+      "notes": "NLP, code generation, neural MT"
     }
   ]
 }
@@ -31,34 +36,32 @@ Intelligence tools fail silently. A classifier at 60% still produces outputs. Th
 
 ### `github-institutional-50.json`
 
-50 GitHub profiles with hand-verified institutional ground truth. For identity resolution eval.
-
-```json
-{
-  "profiles": [
-    {
-      "github_username": "example-user",
-      "expected_institution": "mit",
-      "signals_available": ["github_org", "course_repo"]
-    }
-  ]
-}
-```
+Fifty GitHub profiles with hand-verified institutional ground truth. Used when the identity-resolution eval is wired up.
 
 ## Running
 
 ```bash
-pnpm eval
+npm run eval
 ```
 
-Outputs accuracy percentage + per-fixture diffs. Writes JSON result to `tests/evals/results/`.
+- Upserts institutions + professors, then calls real `enrichProfessor()` per row (live arXiv + Supabase).
+- **~5–10 minutes** (3s spacing between professors + observation writes).
+- Tolerance: \(|actual - expected| \le 1\) counts as a match.
+- Exit **0** if accuracy ≥ **80%** on scored rows; **1** otherwise.
+- Writes `tests/evals/results/<ISO-timestamp>.json` (ignored by git).
+
+## Maintaining expected counts
+
+Re-verify when keyword rules or the 24‑month window logic changes:
+
+```bash
+npx tsx tests/evals/scripts/compute-expected-counts.ts
+```
+
+Uses real arXiv calls with 3s delays; paste JSON into `professors-20.json` after review. Mark `verify_needed` where arXiv author search is ambiguous.
 
 ## Targets
 
-- 80%+ on `recent_relevant_papers_count`
-- 90%+ on `ai_stance_quote` exact match
-- 85%+ on institutional resolution
-
-## Maintaining fixtures
-
-Re-verify fixtures monthly. Professors publish new papers; expected counts change. Use fixture-timestamps to track staleness.
+- 80%+ on `recent_relevant_papers_count` (professors fixture)
+- 90%+ on `ai_stance_quote` exact match *(future)*
+- 85%+ on institutional resolution *(future)*
