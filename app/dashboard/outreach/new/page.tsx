@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { createServerComponentClient } from "@/lib/supabase";
+import { createServerComponentClient } from "@/lib/supabase-server";
 import { NewOutreachForm } from "./NewOutreachForm";
 
 export default async function NewOutreachPage() {
