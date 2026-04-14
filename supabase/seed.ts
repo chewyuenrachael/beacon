@@ -403,6 +403,59 @@ async function seed(): Promise<void> {
   console.log(
     "Seed complete: 5 institutions (cornell, mit, stanford, cmu, oxford), 1 professor (sasha-rush), 5 verification_attempts, 3 ambassadors"
   );
+
+  const { error: instIntelErr } = await supabase.from("institutions").upsert(
+    [
+      {
+        id: "berkeley",
+        name: "UC Berkeley",
+        country: "United States",
+        cs_program_tier: 1,
+        sheerid_supported: true,
+      },
+      {
+        id: "columbia",
+        name: "Columbia University",
+        country: "United States",
+        cs_program_tier: 1,
+        sheerid_supported: true,
+      },
+    ],
+    { onConflict: "id" }
+  );
+  if (instIntelErr) throw instIntelErr;
+
+  const evalFixturePath = resolve(
+    process.cwd(),
+    "tests/evals/professors-20.json"
+  );
+  const evalRaw = readFileSync(evalFixturePath, "utf8");
+  const evalFixture = JSON.parse(evalRaw) as {
+    professors: Array<{
+      id: string;
+      institution_id: string;
+      name: string;
+      arxiv_author_id: string;
+    }>;
+  };
+
+  const professorRows = evalFixture.professors.map((p) => ({
+    id: p.id,
+    institution_id: p.institution_id,
+    name: p.name,
+    arxiv_author_id: p.arxiv_author_id,
+    recent_relevant_papers_count: 0,
+    public_statements: [] as unknown[],
+  }));
+
+  const { error: prof20Err } = await supabase
+    .from("professors")
+    .upsert(professorRows, { onConflict: "id" });
+  if (prof20Err) throw prof20Err;
+
+  console.log(
+    `Intelligence seed: upserted berkeley, columbia + ${professorRows.length} professors from professors-20.json (recent_relevant_papers_count=0)`
+  );
 }
 
 seed().catch((e) => {

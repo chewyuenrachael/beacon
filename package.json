@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "eval": "tsx tests/evals/runner.ts",
-    "seed": "tsx supabase/seed.ts"
+    "seed": "tsx supabase/seed.ts",
+    "enrich-all": "tsx scripts/enrich-all.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.9.0",
