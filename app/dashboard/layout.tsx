@@ -50,26 +50,26 @@ export default function DashboardLayout({
   if (!authed) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <p className="text-ink-300 text-sm">Loading...</p>
+        <p className="text-text-muted text-sm">Loading...</p>
       </div>
     );
   }
 
   return (
     <div className="flex h-screen overflow-hidden">
-      <aside className="w-[200px] shrink-0 border-r border-cream-200 bg-white flex flex-col">
-        <div className="px-4 py-5">
+      <aside className="w-[216px] shrink-0 border-r border-border-subtle bg-surface flex flex-col">
+        <div className="px-5 py-5">
           <Link
             href="/dashboard"
-            className="font-display text-lg font-semibold tracking-tight text-ink-900"
+            className="font-sans text-lg font-semibold tracking-tight text-text-primary"
           >
             Beacon
           </Link>
         </div>
-        <nav className="flex-1 px-2 overflow-y-auto">
+        <nav className="flex-1 px-3 overflow-y-auto">
           {NAV_SECTIONS.map((section) => (
-            <div key={section.title} className="mb-4">
-              <p className="px-3 mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-ink-400">
+            <div key={section.title} className="mb-5">
+              <p className="px-3 mb-1.5 font-mono text-[10px] font-semibold uppercase tracking-wider text-text-muted">
                 {section.title}
               </p>
               <div className="space-y-0.5">
@@ -81,8 +81,8 @@ export default function DashboardLayout({
                       href={item.href}
                       className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-colors ${
                         active
-                          ? "bg-cream-100 text-ink-900 font-medium"
-                          : "text-ink-500 hover:text-ink-700 hover:bg-cream-50"
+                          ? "bg-surface-raised text-text-primary font-medium"
+                          : "text-text-secondary hover:text-text-primary hover:bg-surface-raised"
                       }`}
                     >
                       {item.label}
@@ -93,7 +93,7 @@ export default function DashboardLayout({
             </div>
           ))}
         </nav>
-        <div className="px-4 py-4 border-t border-cream-200">
+        <div className="px-5 py-4 border-t border-border-subtle">
           <button
             onClick={async () => {
               const supabase = createBrowserClient(
@@ -103,14 +103,14 @@ export default function DashboardLayout({
               await supabase.auth.signOut();
               router.replace("/login");
             }}
-            className="text-xs text-ink-300 hover:text-ink-500 transition-colors"
+            className="text-xs text-text-muted hover:text-text-secondary transition-colors"
           >
             Sign out
           </button>
         </div>
       </aside>
-      <main className="flex-1 overflow-y-auto bg-cream-50">
-        <div className="px-6 py-4">{children}</div>
+      <main className="flex-1 overflow-y-auto bg-background">
+        <div className="max-w-7xl mx-auto px-8 py-8">{children}</div>
       </main>
     </div>
   );

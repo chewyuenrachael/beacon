@@ -7,6 +7,11 @@ import {
 } from "@/lib/resource-content-core";
 import { ResourceMarkdown } from "@/lib/resource-markdown";
 import { parseResourceViewPostBody } from "@/app/api/resources/[slug]/view/schemas";
+import {
+  stripLeadingTitle,
+  estimateReadTime,
+  extractHeadings,
+} from "@/lib/resource-display";
 
 const EXPECTED_SLUGS = [
   "cafe-cursor-playbook",
@@ -57,13 +62,84 @@ Body **here**.
 });
 
 describe("ResourceMarkdown", () => {
-  it("renders markdown without throwing", () => {
-    const md = "# Title\n\n- a\n- **b**\n\n|h1|h2|\n|-|-|\n|1|2|\n";
+  it("renders markdown with section wrappers and heading ids", () => {
+    const md = "## Section One\n\nBody text.\n\n### Sub heading\n\nMore text.\n";
     const html = renderToStaticMarkup(
       React.createElement(ResourceMarkdown, { markdown: md })
     );
-    expect(html.length).toBeGreaterThan(20);
-    expect(html).toContain("Title");
+    expect(html).toContain("Section One");
+    expect(html).toContain("<section");
+    expect(html).toContain('id="section-one"');
+  });
+
+  it("renders tables from GFM markdown", () => {
+    const md = "|h1|h2|\n|-|-|\n|1|2|\n";
+    const html = renderToStaticMarkup(
+      React.createElement(ResourceMarkdown, { markdown: md })
+    );
+    expect(html).toContain("<table");
+    expect(html).toContain("<td");
+  });
+
+  it("renders blockquotes as styled callout panels", () => {
+    const md = "> Important note here.\n";
+    const html = renderToStaticMarkup(
+      React.createElement(ResourceMarkdown, { markdown: md })
+    );
+    expect(html).toContain("border-l-2");
+    expect(html).toContain("bg-surface-raised");
+    expect(html).toContain("Important note here.");
+  });
+});
+
+describe("stripLeadingTitle", () => {
+  it("removes h1 matching the resource title", () => {
+    const md = "# My Resource Title\n\nBody text.";
+    const result = stripLeadingTitle(md, "My Resource Title");
+    expect(result).toBe("Body text.");
+    expect(result).not.toContain("# My Resource Title");
+  });
+
+  it("keeps h1 when it does not match the title", () => {
+    const md = "# Different Title\n\nBody text.";
+    const result = stripLeadingTitle(md, "My Resource Title");
+    expect(result).toContain("# Different Title");
+  });
+
+  it("handles em-dash normalization", () => {
+    const md = "# FAQ \u2014 Academic Integrity\n\nBody.";
+    const result = stripLeadingTitle(md, "FAQ \u2014 Academic Integrity");
+    expect(result).toBe("Body.");
+  });
+});
+
+describe("estimateReadTime", () => {
+  it("returns at least 1 min for short content", () => {
+    expect(estimateReadTime("Hello world")).toBe("1 min read");
+  });
+
+  it("calculates read time based on word count", () => {
+    const words = new Array(450).fill("word").join(" ");
+    expect(estimateReadTime(words)).toBe("2 min read");
+  });
+});
+
+describe("extractHeadings", () => {
+  it("extracts h2 and h3 headings with slugs", () => {
+    const md =
+      "## First Section\n\nText.\n\n### Sub Section\n\nMore.\n\n## Second Section\n";
+    const headings = extractHeadings(md);
+    expect(headings).toEqual([
+      { depth: 2, text: "First Section", slug: "first-section" },
+      { depth: 3, text: "Sub Section", slug: "sub-section" },
+      { depth: 2, text: "Second Section", slug: "second-section" },
+    ]);
+  });
+
+  it("strips bold markers from heading text", () => {
+    const md = "## **Bold** heading\n";
+    const headings = extractHeadings(md);
+    expect(headings[0].text).toBe("Bold heading");
   });
 });
 

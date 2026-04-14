@@ -67,16 +67,53 @@ const STRATEGIC_CAMPUSES = [
 
 export async function generateWorkqueue(): Promise<WorkqueueItem[]> {
   const candidates: WorkqueueCandidate[] = [];
+  const horizon = addDays(new Date(), 14).toISOString();
+  const nowIso = new Date().toISOString();
 
-  const { data: verRows, error: verErr } = await supabaseAdmin
-    .from("verification_attempts")
-    .select("id,email,claimed_institution,status,country")
-    .in("status", ["pending", "manual_review"])
-    .order("created_at", { ascending: false })
-    .limit(12);
+  // Fix 1: parallelize all independent base queries
+  const [verResult, ambResult, tpResult, profResult, evResult, staleProfResult] =
+    await Promise.all([
+      supabaseAdmin
+        .from("verification_attempts")
+        .select("id,email,claimed_institution,status,country")
+        .in("status", ["pending", "manual_review"])
+        .order("created_at", { ascending: false })
+        .limit(12),
+      supabaseAdmin
+        .from("ambassadors")
+        .select("id,name,email,institution_id,stage,score")
+        .in("stage", ["applied", "under_review"])
+        .order("id", { ascending: true })
+        .limit(12),
+      supabaseAdmin
+        .from("outreach_touchpoints")
+        .select("target_id")
+        .eq("target_type", "professor"),
+      supabaseAdmin
+        .from("professors")
+        .select("id,name,institution_id,recent_relevant_papers_count")
+        .gte("recent_relevant_papers_count", 4)
+        .order("recent_relevant_papers_count", { ascending: false })
+        .limit(20),
+      supabaseAdmin
+        .from("events")
+        .select("id,title,institution_id,scheduled_at,status")
+        .in("status", ["draft", "scheduled"])
+        .gte("scheduled_at", nowIso)
+        .lte("scheduled_at", horizon)
+        .order("scheduled_at", { ascending: true })
+        .limit(10),
+      supabaseAdmin
+        .from("professors")
+        .select("id,name,last_enriched_at,recent_relevant_papers_count")
+        .is("last_enriched_at", null)
+        .order("recent_relevant_papers_count", { ascending: false })
+        .limit(8),
+    ]);
 
-  if (!verErr && verRows) {
-    for (const v of verRows) {
+  // --- process verification attempts ---
+  if (!verResult.error && verResult.data) {
+    for (const v of verResult.data) {
       const inst = mapVerificationInstitutionId({
         claimed_institution: (v.claimed_institution as string | null) ?? null,
         email: (v.email as string | null) ?? null,
@@ -108,15 +145,9 @@ export async function generateWorkqueue(): Promise<WorkqueueItem[]> {
     }
   }
 
-  const { data: ambRows, error: ambErr } = await supabaseAdmin
-    .from("ambassadors")
-    .select("id,name,email,institution_id,stage,score")
-    .in("stage", ["applied", "under_review"])
-    .order("id", { ascending: true })
-    .limit(12);
-
-  if (!ambErr && ambRows) {
-    for (const a of ambRows) {
+  // --- process ambassador pipeline ---
+  if (!ambResult.error && ambResult.data) {
+    for (const a of ambResult.data) {
       const stage = a.stage as string;
       const priority_score = stage === "under_review" ? 81 : 78;
       const total = (a.score as { total?: number } | null)?.total;
@@ -138,61 +169,36 @@ export async function generateWorkqueue(): Promise<WorkqueueItem[]> {
     }
   }
 
+  // --- process outreach candidates (professors without touchpoints) ---
   let professorsWithOutreach: Set<string> | null = null;
-  try {
-    const { data: tp, error: tpErr } = await supabaseAdmin
-      .from("outreach_touchpoints")
-      .select("target_id")
-      .eq("target_type", "professor");
-    if (tpErr) throw tpErr;
+  if (!tpResult.error && tpResult.data) {
     professorsWithOutreach = new Set(
-      (tp ?? []).map((r) => r.target_id as string)
+      tpResult.data.map((r) => r.target_id as string)
     );
-  } catch {
-    professorsWithOutreach = null;
   }
 
-  if (professorsWithOutreach) {
-    const { data: profs, error: pErr } = await supabaseAdmin
-      .from("professors")
-      .select("id,name,institution_id,recent_relevant_papers_count")
-      .gte("recent_relevant_papers_count", 4)
-      .order("recent_relevant_papers_count", { ascending: false })
-      .limit(20);
-
-    if (!pErr && profs) {
-      for (const p of profs) {
-        const pid = p.id as string;
-        if (professorsWithOutreach.has(pid)) continue;
-        const cnt = Number(p.recent_relevant_papers_count ?? 0);
-        candidates.push({
-          id: `outreach-${pid}`,
-          priority_score: 68 + Math.min(cnt, 12) * 0.35,
-          title: `Faculty outreach: ${p.name as string}`,
-          description:
-            "High keyword-visible paper volume and no outreach touchpoint logged yet.",
-          action_url: `/dashboard/professors/${pid}`,
-          action_label: "Open professor",
-          source_feature: "outreach",
-          mark_complete: { entity_type: "professor", entity_id: pid },
-        });
-      }
+  if (professorsWithOutreach && !profResult.error && profResult.data) {
+    for (const p of profResult.data) {
+      const pid = p.id as string;
+      if (professorsWithOutreach.has(pid)) continue;
+      const cnt = Number(p.recent_relevant_papers_count ?? 0);
+      candidates.push({
+        id: `outreach-${pid}`,
+        priority_score: 68 + Math.min(cnt, 12) * 0.35,
+        title: `Faculty outreach: ${p.name as string}`,
+        description:
+          "High keyword-visible paper volume and no outreach touchpoint logged yet.",
+        action_url: `/dashboard/professors/${pid}`,
+        action_label: "Open professor",
+        source_feature: "outreach",
+        mark_complete: { entity_type: "professor", entity_id: pid },
+      });
     }
   }
 
-  const horizon = addDays(new Date(), 14).toISOString();
-  const nowIso = new Date().toISOString();
-  const { data: evRows, error: evErr } = await supabaseAdmin
-    .from("events")
-    .select("id,title,institution_id,scheduled_at,status")
-    .in("status", ["draft", "scheduled"])
-    .gte("scheduled_at", nowIso)
-    .lte("scheduled_at", horizon)
-    .order("scheduled_at", { ascending: true })
-    .limit(10);
-
-  if (!evErr && evRows) {
-    for (const ev of evRows) {
+  // --- process upcoming events ---
+  if (!evResult.error && evResult.data) {
+    for (const ev of evResult.data) {
       const when = ev.scheduled_at
         ? new Date(ev.scheduled_at as string).toISOString().slice(0, 10)
         : "TBD";
@@ -223,8 +229,14 @@ export async function generateWorkqueue(): Promise<WorkqueueItem[]> {
     }
   }
 
-  for (const instId of STRATEGIC_CAMPUSES) {
-    const m = await getInstitutionMetrics(instId);
+  // Fix 2: parallelize N+1 institution metrics
+  const metricsArray = await Promise.all(
+    STRATEGIC_CAMPUSES.map((instId) => getInstitutionMetrics(instId))
+  );
+
+  for (let i = 0; i < STRATEGIC_CAMPUSES.length; i++) {
+    const instId = STRATEGIC_CAMPUSES[i];
+    const m = metricsArray[i];
     const gaps = describeCoverageGaps(m);
     if (gaps.length === 0) continue;
     candidates.push({
@@ -239,15 +251,9 @@ export async function generateWorkqueue(): Promise<WorkqueueItem[]> {
     });
   }
 
-  const staleProf = await supabaseAdmin
-    .from("professors")
-    .select("id,name,last_enriched_at,recent_relevant_papers_count")
-    .is("last_enriched_at", null)
-    .order("recent_relevant_papers_count", { ascending: false })
-    .limit(8);
-
-  if (!staleProf.error && staleProf.data) {
-    for (const p of staleProf.data) {
+  // --- process stale professors ---
+  if (!staleProfResult.error && staleProfResult.data) {
+    for (const p of staleProfResult.data) {
       candidates.push({
         id: `intel-${p.id as string}`,
         priority_score: 50,

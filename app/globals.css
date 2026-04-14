@@ -3,14 +3,39 @@
 @tailwind utilities;
 
 :root {
-  --background: #FAFAF7;
-  --foreground: #1A1A1A;
+  --bg:             #FAFAF7;
+  --surface:        #FFFFFF;
+  --surface-raised: #F2F1EC;
+  --border-subtle:  #E6E4DE;
+  --border-strong:  #1A1A1A;
+  --text-primary:   #141414;
+  --text-secondary: #4A4A48;
+  --text-muted:     #7A7874;
+  --accent:         #E86F3E;
+  --accent-hover:   #D85A28;
+
+  /* legacy aliases kept so nothing breaks mid-migration */
+  --background:     var(--bg);
+  --foreground:     var(--text-primary);
 }
 
+/* dark mode scaffold — not shipped yet */
+/* .dark {
+  --bg:             #0A0A0A;
+  --surface:        #141414;
+  --surface-raised: #1E1E1E;
+  --border-subtle:  #2A2A2A;
+  --border-strong:  #E6E4DE;
+  --text-primary:   #FAFAF7;
+  --text-secondary: #A0A09A;
+  --text-muted:     #6B6B65;
+  --accent:         #E86F3E;
+  --accent-hover:   #F08050;
+} */
+
 body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: 'Inter', system-ui, sans-serif;
+  color: var(--text-primary);
+  background: var(--bg);
 }
 
 @layer utilities {
@@ -31,4 +56,17 @@ body {
 
 .animate-pulse-dot {
   animation: pulse-dot 1.5s ease-in-out infinite;
+}
+
+/* Heading anchor links — visible on hover */
+.heading-anchor {
+  opacity: 0;
+  margin-left: 0.35em;
+  color: var(--text-muted);
+  text-decoration: none;
+  transition: opacity 0.15s;
+}
+h2:hover .heading-anchor,
+h3:hover .heading-anchor {
+  opacity: 1;
 }

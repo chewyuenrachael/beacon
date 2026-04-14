@@ -3,16 +3,12 @@ import { notFound } from "next/navigation";
 import { getResource } from "@/lib/resource-content";
 import { ResourceContent } from "@/components/resources/ResourceContent";
 import { ResourceViewLogger } from "@/components/resources/ResourceViewLogger";
-import { Badge } from "@/components/ui/Badge";
-
-const categoryVariant = {
-  event_playbook: "blue" as const,
-  training_video: "purple" as const,
-  slide_template: "green" as const,
-  social_template: "amber" as const,
-  workshop_curriculum: "purple" as const,
-  faq: "gray" as const,
-};
+import { ResourceToc } from "@/components/resources/ResourceToc";
+import {
+  stripLeadingTitle,
+  estimateReadTime,
+  extractHeadings,
+} from "@/lib/resource-display";
 
 export default async function ResourceDetailPage({
   params,
@@ -23,33 +19,65 @@ export default async function ResourceDetailPage({
   const resource = await getResource(slug);
   if (!resource) notFound();
 
+  const displayBody = stripLeadingTitle(resource.body, resource.title);
+  const readTime = estimateReadTime(resource.body);
+  const headings = extractHeadings(displayBody);
+
   return (
-    <div className="max-w-3xl space-y-6">
+    <div className="relative max-w-6xl mx-auto">
       <ResourceViewLogger slug={slug} />
-      <div>
+
+      {/* back link */}
+      <div className="mb-8">
         <Link
           href="/dashboard/resources"
-          className="text-sm text-ink-500 hover:text-accent-terracotta transition-colors"
+          className="text-sm text-text-muted hover:text-accent transition-colors"
         >
-          ← All resources
+          &larr; All resources
         </Link>
       </div>
 
-      <header className="space-y-3">
-        <div className="flex flex-wrap items-center gap-2">
-          <Badge variant={categoryVariant[resource.category]} size="md">
-            {resource.category.replace(/_/g, " ")}
-          </Badge>
-          <span className="text-xs text-ink-400 uppercase tracking-wide">
-            Last updated {resource.last_updated}
-          </span>
-        </div>
-        <h1 className="text-2xl font-semibold text-ink-900 font-display">
-          {resource.title}
-        </h1>
-      </header>
+      <div className="xl:grid xl:grid-cols-[1fr_240px] xl:gap-12">
+        {/* article column */}
+        <article className="min-w-0 max-w-3xl">
+          <header className="mb-10">
+            <div className="flex flex-wrap items-center gap-3 mb-4">
+              <span className="font-mono text-xs font-medium uppercase tracking-wider text-text-muted">
+                {resource.category.replace(/_/g, " ")}
+              </span>
+              <span className="text-text-muted">&middot;</span>
+              <span className="font-mono text-xs text-text-muted">
+                {resource.last_updated}
+              </span>
+              <span className="text-text-muted">&middot;</span>
+              <span className="font-mono text-xs text-text-muted">
+                {readTime}
+              </span>
+            </div>
+            <h1 className="text-[2rem] leading-tight font-semibold text-text-primary font-sans tracking-tight">
+              {resource.title}
+            </h1>
+          </header>
 
-      <ResourceContent markdown={resource.body} />
+          {/* mobile ToC */}
+          <div className="xl:hidden mb-8">
+            <ResourceToc headings={headings} mobile />
+          </div>
+
+          <ResourceContent
+            markdown={displayBody}
+            category={resource.category}
+            title={resource.title}
+          />
+        </article>
+
+        {/* desktop ToC rail */}
+        <aside className="hidden xl:block">
+          <div className="sticky top-24">
+            <ResourceToc headings={headings} />
+          </div>
+        </aside>
+      </div>
     </div>
   );
 }

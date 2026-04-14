@@ -1,12 +1,27 @@
 import type { Metadata } from "next";
+import { Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
+
+const sans = Inter({
+  subsets: ["latin"],
+  variable: "--font-sans",
+  display: "swap",
+});
+
+const mono = JetBrains_Mono({
+  subsets: ["latin"],
+  variable: "--font-mono",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: "Beacon — Developer Comms Intelligence",
-  description: "Real-time developer sentiment monitoring and communications intelligence. 30+ sources, tension detection, engagement velocity, spokesperson prep.",
+  description:
+    "Real-time developer sentiment monitoring and communications intelligence. 30+ sources, tension detection, engagement velocity, spokesperson prep.",
   openGraph: {
     title: "Beacon — Developer Comms Intelligence",
-    description: "Real-time developer sentiment monitoring and communications intelligence.",
+    description:
+      "Real-time developer sentiment monitoring and communications intelligence.",
   },
 };
 
@@ -16,16 +31,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link
-          href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@500;600&family=Inter:wght@400;500&family=Lora:ital,wght@0,400;0,500;1,600&display=swap"
-          rel="stylesheet"
-        />
-      </head>
-      <body className="bg-cream-50 text-ink-900 antialiased">{children}</body>
+    <html lang="en" className={`${sans.variable} ${mono.variable}`}>
+      <body className="bg-background text-foreground font-sans antialiased">
+        {children}
+      </body>
     </html>
   );
 }

@@ -9,15 +9,42 @@ export async function getInstitutionMetrics(
   institutionId: string
 ): Promise<InstitutionMetrics> {
   const sinceIso = subDays(new Date(), 30).toISOString();
+  const nowIso = new Date().toISOString();
 
-  const { data: profRows, error: profErr } = await supabaseAdmin
-    .from("professors")
-    .select("id,name,recent_relevant_papers_count")
-    .eq("institution_id", institutionId);
+  const [profResult, ambCountResult, ambActiveResult, evResult, ambIdsResult] =
+    await Promise.all([
+      supabaseAdmin
+        .from("professors")
+        .select("id,name,recent_relevant_papers_count")
+        .eq("institution_id", institutionId),
+      supabaseAdmin
+        .from("ambassadors")
+        .select("id", { count: "exact", head: true })
+        .eq("institution_id", institutionId),
+      supabaseAdmin
+        .from("ambassadors")
+        .select("id", { count: "exact", head: true })
+        .eq("institution_id", institutionId)
+        .eq("stage", "active"),
+      supabaseAdmin
+        .from("events")
+        .select("id", { count: "exact", head: true })
+        .eq("institution_id", institutionId)
+        .in("status", ["draft", "scheduled"])
+        .gte("scheduled_at", nowIso),
+      supabaseAdmin
+        .from("ambassadors")
+        .select("id")
+        .eq("institution_id", institutionId),
+    ]);
 
-  if (profErr) throw profErr;
+  if (profResult.error) throw profResult.error;
+  if (ambCountResult.error) throw ambCountResult.error;
+  if (ambActiveResult.error) throw ambActiveResult.error;
+  if (evResult.error) throw evResult.error;
+  if (ambIdsResult.error) throw ambIdsResult.error;
 
-  const professors = (profRows ?? []) as InstitutionProfessorSummary[];
+  const professors = (profResult.data ?? []) as InstitutionProfessorSummary[];
   const professor_count = professors.length;
   const sumPapers = professors.reduce(
     (s, p) => s + Number(p.recent_relevant_papers_count ?? 0),
@@ -36,40 +63,8 @@ export async function getInstitutionMetrics(
     })
     .slice(0, 3);
 
-  const { count: ambassador_count, error: ambCountErr } = await supabaseAdmin
-    .from("ambassadors")
-    .select("id", { count: "exact", head: true })
-    .eq("institution_id", institutionId);
-
-  if (ambCountErr) throw ambCountErr;
-
-  const { count: ambassador_active_count, error: ambActiveErr } =
-    await supabaseAdmin
-      .from("ambassadors")
-      .select("id", { count: "exact", head: true })
-      .eq("institution_id", institutionId)
-      .eq("stage", "active");
-
-  if (ambActiveErr) throw ambActiveErr;
-
-  const nowIso = new Date().toISOString();
-  const { count: upcoming_events_count, error: evErr } = await supabaseAdmin
-    .from("events")
-    .select("id", { count: "exact", head: true })
-    .eq("institution_id", institutionId)
-    .in("status", ["draft", "scheduled"])
-    .gte("scheduled_at", nowIso);
-
-  if (evErr) throw evErr;
-
   const profIds = professors.map((p) => p.id);
-  const { data: ambRows, error: ambIdsErr } = await supabaseAdmin
-    .from("ambassadors")
-    .select("id")
-    .eq("institution_id", institutionId);
-
-  if (ambIdsErr) throw ambIdsErr;
-  const ambassadorIds = (ambRows ?? []).map((r) => r.id as string);
+  const ambassadorIds = (ambIdsResult.data ?? []).map((r) => r.id as string);
 
   // POST-DEMO TODO: observation rollup uses O(entities per institution) filter breadth
   // (.in lists grow with faculty/ambassador counts). Revisit query shape or materialized
@@ -111,9 +106,9 @@ export async function getInstitutionMetrics(
     professor_count,
     avg_recent_relevant_papers,
     top_3_professors_by_count,
-    ambassador_count: ambassador_count ?? 0,
-    ambassador_active_count: ambassador_active_count ?? 0,
-    upcoming_events_count: upcoming_events_count ?? 0,
+    ambassador_count: ambCountResult.count ?? 0,
+    ambassador_active_count: ambActiveResult.count ?? 0,
+    upcoming_events_count: evResult.count ?? 0,
     total_observations_last_30d,
   };
 }

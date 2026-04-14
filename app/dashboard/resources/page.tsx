@@ -10,7 +10,7 @@ export default async function ResourcesPage() {
       <div className="flex justify-end">
         <Link
           href="/dashboard/resources/analytics"
-          className="text-sm text-accent-terracotta hover:underline font-medium"
+          className="text-sm text-accent hover:underline font-medium"
         >
           View analytics
         </Link>

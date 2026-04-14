@@ -48,8 +48,6 @@ export default async function InstitutionDetailPage({
     notFound();
   }
 
-  const metrics = await getInstitutionMetrics(id);
-
   let profQuery = supabase
     .from("professors")
     .select("id,name,recent_relevant_papers_count,last_enriched_at")
@@ -59,16 +57,20 @@ export default async function InstitutionDetailPage({
     : profQuery.order("recent_relevant_papers_count", { ascending: false });
   profQuery = profQuery.order("name", { ascending: true });
 
-  const { data: professors, error: pErr } = await profQuery;
-  if (pErr) throw pErr;
+  const [metrics, profResult, ambResult] = await Promise.all([
+    getInstitutionMetrics(id),
+    profQuery,
+    supabase
+      .from("ambassadors")
+      .select("id,name,email,stage,health_score,last_active_at")
+      .eq("institution_id", id)
+      .order("stage", { ascending: true }),
+  ]);
 
-  const { data: ambassadors, error: aErr } = await supabase
-    .from("ambassadors")
-    .select("id,name,email,stage,health_score,last_active_at")
-    .eq("institution_id", id)
-    .order("stage", { ascending: true });
-
-  if (aErr) throw aErr;
+  if (profResult.error) throw profResult.error;
+  if (ambResult.error) throw ambResult.error;
+  const professors = profResult.data;
+  const ambassadors = ambResult.data;
 
   const sinceIso = subDays(new Date(), 30).toISOString();
   const profIds = (professors ?? []).map((r) => r.id as string);

@@ -1,13 +1,20 @@
 import { ResourceMarkdown } from "@/lib/resource-markdown";
+import type { ResourceCategory } from "@/lib/types/resource";
 
 interface ResourceContentProps {
   markdown: string;
+  category?: ResourceCategory;
+  title?: string;
 }
 
-export function ResourceContent({ markdown }: ResourceContentProps) {
+export function ResourceContent({
+  markdown,
+  category,
+  title,
+}: ResourceContentProps) {
   return (
-    <div className="resource-prose prose prose-sm max-w-none text-ink-900 prose-headings:font-display prose-headings:text-ink-900 prose-a:text-accent-terracotta prose-code:text-ink-800 prose-pre:bg-cream-100 prose-pre:border prose-pre:border-cream-200">
-      <ResourceMarkdown markdown={markdown} />
+    <div className="prose prose-resource max-w-none">
+      <ResourceMarkdown markdown={markdown} category={category} title={title} />
     </div>
   );
 }

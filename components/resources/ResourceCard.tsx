@@ -1,19 +1,6 @@
 import Link from "next/link";
 import type { Resource } from "@/lib/types/resource";
 import { Card } from "@/components/ui/Card";
-import { Badge } from "@/components/ui/Badge";
-
-const categoryVariant: Record<
-  Resource["category"],
-  "blue" | "purple" | "green" | "amber" | "gray"
-> = {
-  event_playbook: "blue",
-  training_video: "purple",
-  slide_template: "green",
-  social_template: "amber",
-  workshop_curriculum: "purple",
-  faq: "gray",
-};
 
 function categoryLabel(c: Resource["category"]): string {
   return c.replace(/_/g, " ");
@@ -25,20 +12,25 @@ interface ResourceCardProps {
 
 export function ResourceCard({ resource }: ResourceCardProps) {
   return (
-    <Link href={`/dashboard/resources/${resource.slug}`} className="block group">
-      <Card className="h-full p-4 transition-shadow group-hover:shadow-md group-hover:border-cream-300">
-        <div className="flex flex-wrap items-center gap-2 mb-2">
-          <Badge variant={categoryVariant[resource.category]} size="sm">
+    <Link
+      href={`/dashboard/resources/${resource.slug}`}
+      className="block group"
+    >
+      <Card className="h-full p-5 transition-all group-hover:shadow-md group-hover:border-border-strong/10">
+        <div className="flex flex-wrap items-center gap-2 mb-3">
+          <span className="font-mono text-[10px] font-medium uppercase tracking-wider text-text-muted bg-surface-raised px-1.5 py-0.5 rounded">
             {categoryLabel(resource.category)}
-          </Badge>
-          <span className="text-[10px] text-ink-400 uppercase tracking-wide">
-            Updated {resource.last_updated}
+          </span>
+          <span className="font-mono text-[10px] text-text-muted">
+            {resource.last_updated}
           </span>
         </div>
-        <h3 className="text-sm font-semibold text-ink-900 font-display group-hover:text-accent-terracotta transition-colors">
+        <h3 className="text-sm font-semibold text-text-primary group-hover:text-accent transition-colors leading-snug">
           {resource.title}
         </h3>
-        <p className="mt-2 text-xs text-ink-400">Open resource</p>
+        <p className="mt-3 text-xs text-text-muted">
+          Open resource &rarr;
+        </p>
       </Card>
     </Link>
   );

@@ -41,14 +41,15 @@ export function ResourcesHubClient({ resources }: ResourcesHubClientProps) {
   }, [filtered]);
 
   return (
-    <div className="space-y-8 max-w-6xl">
+    <div className="space-y-10 max-w-6xl">
       <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-ink-900 font-display">
+          <h1 className="text-2xl font-semibold text-text-primary font-sans">
             Enablement resources
           </h1>
-          <p className="text-sm text-ink-500 mt-1">
-            Playbooks and FAQs for ambassadors — filesystem-backed, always current after deploy.
+          <p className="text-sm text-text-secondary mt-1">
+            Playbooks and FAQs for ambassadors — filesystem-backed, always
+            current after deploy.
           </p>
         </div>
         <label className="block w-full sm:w-72">
@@ -58,20 +59,22 @@ export function ResourcesHubClient({ resources }: ResourcesHubClientProps) {
             placeholder="Search by title…"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            className="w-full rounded-lg border border-cream-300 bg-white px-3 py-2 text-sm text-ink-900 placeholder:text-ink-300 focus:outline-none focus:ring-2 focus:ring-accent-terracotta/30"
+            className="w-full rounded-lg border border-border-subtle bg-surface px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-accent/30"
           />
         </label>
       </div>
 
       {filtered.length === 0 ? (
-        <p className="text-sm text-ink-500">No resources match that title.</p>
+        <p className="text-sm text-text-secondary">
+          No resources match that title.
+        </p>
       ) : (
         CATEGORY_ORDER.map((cat) => {
           const list = grouped.get(cat) ?? [];
           if (list.length === 0) return null;
           return (
             <section key={cat}>
-              <h2 className="text-xs font-semibold uppercase tracking-wider text-ink-400 mb-3">
+              <h2 className="font-mono text-xs font-semibold uppercase tracking-wider text-text-muted mb-3">
                 {categoryHeading(cat)}
               </h2>
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
