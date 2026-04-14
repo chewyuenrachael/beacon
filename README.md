@@ -6,9 +6,9 @@ Beacon is an internal operating tool for running Cursor's student discount progr
 
 ## The problem
 
-The Campus Lead role is a 10-year PLG capture bet. Students today are professional programmers in 3 years. Copilot has an 8-year free-for-students head start. Anthropic pays its Campus Ambassadors. Cursor's wedge is owning the editor end-to-end and having the strongest research story — but the Campus Lead has to execute against that advantage without a tool stack.
+The Campus Lead role is a 10-year PLG capture bet. Students today are professional programmers in 3 years. Copilot has an 8-year free-for-students head start. Anthropic pays its Campus Ambassadors. Cursor's wedge is owning the editor end-to-end and having the strongest research story.
 
-Day 1 in the role, you inherit:
+In this blank slate:
 
 - No CRM for faculty outreach
 - No pipeline for ambassador applications
@@ -174,10 +174,3 @@ Last run: 100% accuracy on 19 scored professors (Zhou Yu excluded due to arXiv n
 
 Run with `npm run eval`. The target is 80%+ accuracy; any drop flags a regression before merge.
 
-## What Day 30 of the role looks like
-
-Monday, 8am. Beacon pushes the week's top 10 actions to my calendar. I review each one — three are draft outreach emails to professors whose recent arXiv papers matched the keyword list, two are pending ambassador applications needing review, one is a verification in manual review for an IIT Delhi student. I action all 10 by noon.
-
-Wednesday. Ambassador at MIT runs a Cafe Cursor. Beacon tracks attendance, fires off the post-event activation job, logs observations against the MIT ambassador's health score.
-
-Friday. Beacon's weekly digest lands in my inbox: WACS-50 up 8%, three new activations at Stanford traceable to Percy Liang's lab demo two weeks ago, India/Romania verification queue growing — time to escalate the SheerID coverage expansion.
