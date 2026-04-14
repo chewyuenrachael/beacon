@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { createServerComponentClient } from "@/lib/supabase";
+import { createServerComponentClient } from "@/lib/supabase-server";
 import { Card } from "@/components/ui/Card";
 
 function buildProfessorsHref(params: {
