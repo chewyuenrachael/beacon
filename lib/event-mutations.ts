@@ -1,45 +1,10 @@
 /**
- * Event entity writes + observations. beacon-core Observation types omit `event`
- * until coordinated — we assert at the boundary; Postgres stores text freely.
+ * Event entity writes + observations.
  */
 
 import { logObservation } from "@/lib/observations";
 import { supabaseAdmin } from "@/lib/supabase";
 import type { Event, EventAttendee, EventStatus, EventType } from "@/lib/types/event";
-import type { Observation, ObservationSource, ObservationType } from "@/lib/types";
-
-type LogObservationParams = Parameters<typeof logObservation>[0];
-
-function asObservationParams(
-  params: Omit<LogObservationParams, "entity_type" | "observation_type"> & {
-    entity_type: string;
-    observation_type: string;
-  }
-): LogObservationParams {
-  return params as unknown as LogObservationParams;
-}
-
-export async function logEventObservation(params: {
-  eventId: string;
-  observationType:
-    | "event_created"
-    | "event_updated"
-    | "event_attendee_recorded";
-  payload: Record<string, unknown>;
-  source: ObservationSource;
-  confidence: number;
-}): Promise<Observation> {
-  return logObservation(
-    asObservationParams({
-      entity_type: "event",
-      entity_id: params.eventId,
-      observation_type: params.observationType as ObservationType,
-      payload: params.payload,
-      source: params.source,
-      confidence: params.confidence,
-    })
-  );
-}
 
 function mapEventRow(row: Record<string, unknown>): Event {
   return {
@@ -104,9 +69,10 @@ export async function createEventWithObservation(
 
   const event = mapEventRow(data as Record<string, unknown>);
 
-  await logEventObservation({
-    eventId: event.id,
-    observationType: "event_created",
+  await logObservation({
+    entity_type: "event",
+    entity_id: event.id,
+    observation_type: "event_created",
     payload: {
       title: event.title,
       event_type: event.event_type,
@@ -146,9 +112,10 @@ export async function updateEventWithObservation(
     throw new Error(error?.message ?? "Failed to update event");
   }
 
-  await logEventObservation({
-    eventId,
-    observationType: "event_updated",
+  await logObservation({
+    entity_type: "event",
+    entity_id: eventId,
+    observation_type: "event_updated",
     payload: { patch: patch as Record<string, unknown>, previous: previousRow },
     source: "manual",
     confidence: 1,
@@ -189,9 +156,10 @@ export async function insertAttendeeAndBumpCount(params: {
     throw new Error(evErr?.message ?? "Event not found after attendee insert");
   }
 
-  await logEventObservation({
-    eventId: params.eventId,
-    observationType: "event_attendee_recorded",
+  await logObservation({
+    entity_type: "event",
+    entity_id: params.eventId,
+    observation_type: "event_attendee_recorded",
     payload: {
       event_id: params.eventId,
       attendee_id: attendee.id,
