@@ -1,5 +1,5 @@
 import { subDays } from "date-fns";
-import { supabaseAdmin } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 import type { InstitutionMetrics, InstitutionProfessorSummary } from "@/lib/types/intelligence";
 
 /**
