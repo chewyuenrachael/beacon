@@ -4,7 +4,7 @@ import {
   type EnrichedTouchpoint,
 } from "@/components/outreach/OutreachPipeline";
 import { mapOutreachTouchpointRow } from "@/lib/outreach-generator";
-import { createServerComponentClient } from "@/lib/supabase";
+import { createServerComponentClient } from "@/lib/supabase-server";
 import { isProfessorLinkedTargetType } from "@/lib/types/outreach";
 
 export default async function OutreachDashboardPage() {
