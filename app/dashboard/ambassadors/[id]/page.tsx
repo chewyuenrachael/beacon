@@ -8,7 +8,7 @@ import {
   listObservationsForAmbassador,
   mapAmbassadorRow,
 } from "@/lib/ambassador-pipeline";
-import { createServerComponentClient } from "@/lib/supabase";
+import { createServerComponentClient } from "@/lib/supabase-server";
 import type { AmbassadorStage, Observation } from "@/lib/types";
 import { AdvanceStageButton } from "./AdvanceStageButton";
 import { HealthRefreshButton } from "./HealthRefreshButton";

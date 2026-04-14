@@ -8,8 +8,8 @@ import type {
   DraftStatus,
   Incident,
   StakeholderRole,
-} from "@/app/dashboard/warroom/types";
-import { CHANNEL_CONFIG, safeFetchArray } from "@/app/dashboard/warroom/types";
+} from "@/lib/warroom-ui";
+import { CHANNEL_CONFIG, safeFetchArray } from "@/lib/warroom-ui";
 import DraftCommentsComponent from "@/components/DraftComments";
 import TemplateSelector from "@/components/TemplateSelector";
 

@@ -1,4 +1,4 @@
-import { supabaseAdmin } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 import { RsvpForm } from "./RsvpForm";
 import type { EventStatus, EventType } from "@/lib/types/event";
 

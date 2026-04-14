@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { mapAmbassadorRow } from "@/lib/ambassador-pipeline";
 import type { AmbassadorApplicationData } from "@/lib/types";
 import { scoreAmbassador } from "@/lib/ambassador-scoring";
-import { supabaseAdmin } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 import { ambassadorIdParamsSchema } from "../../schemas";
 
 function toApplicationData(

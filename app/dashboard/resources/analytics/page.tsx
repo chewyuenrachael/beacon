@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { subDays } from "date-fns";
-import { createServerComponentClient } from "@/lib/supabase";
+import { createServerComponentClient } from "@/lib/supabase-server";
 import { listResources } from "@/lib/resource-content";
 import { MetricCard } from "@/components/ui/MetricCard.forge";
 import { Card } from "@/components/ui/Card";

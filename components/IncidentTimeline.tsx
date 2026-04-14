@@ -1,8 +1,8 @@
 "use client";
 
 import { formatDistanceToNow } from "date-fns";
-import type { TimelineEntry } from "@/app/dashboard/warroom/types";
-import { TIMELINE_ICONS } from "@/app/dashboard/warroom/types";
+import type { TimelineEntry } from "@/lib/warroom-ui";
+import { TIMELINE_ICONS } from "@/lib/warroom-ui";
 
 interface IncidentTimelineProps {
   timeline: TimelineEntry[];

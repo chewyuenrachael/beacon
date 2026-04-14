@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { supabaseAdmin } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 import { insertAttendeeAndBumpCount } from "@/lib/event-mutations";
 import type { EventAttendee } from "@/lib/types/event";
 import { attendeesParamsSchema, createAttendeeBodySchema } from "./schemas";

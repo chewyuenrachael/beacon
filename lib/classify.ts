@@ -1,5 +1,5 @@
 import type { MentionRaw, ClassificationInput, ClassificationOutput, AudienceRelevance, ClassificationWithAudience } from '@/lib/types';
-import { supabaseAdmin } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabase-admin';
 
 const CLASSIFICATION_SYSTEM_PROMPT = `You are a communications intelligence analyst for a developer tools company (Anthropic, makers of Claude and Claude Code). Your job is to classify mentions from developer community platforms.
 

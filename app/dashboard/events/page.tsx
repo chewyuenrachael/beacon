@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { createServerComponentClient } from "@/lib/supabase";
+import { createServerComponentClient } from "@/lib/supabase-server";
 import { EventCard } from "@/components/events/EventCard";
 import { Button } from "@/components/ui/Button";
 import type { Event, EventStatus, EventType } from "@/lib/types/event";

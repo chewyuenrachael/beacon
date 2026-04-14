@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { mapAmbassadorRow } from "@/lib/ambassador-pipeline";
 import { logObservation } from "@/lib/observations";
-import { supabaseAdmin } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 import {
   ambassadorIdParamsSchema,
   patchAmbassadorBodySchema,

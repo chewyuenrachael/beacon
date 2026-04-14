@@ -11,8 +11,8 @@ import {
   Tooltip,
   ReferenceLine,
 } from "recharts";
-import type { LLMMonitoringSnapshot } from "@/app/dashboard/llm-monitor/types";
-import { PLATFORM_COLORS, PLATFORM_LABELS } from "@/app/dashboard/llm-monitor/types";
+import type { LLMMonitoringSnapshot } from "@/lib/llm-monitor-ui";
+import { PLATFORM_COLORS, PLATFORM_LABELS } from "@/lib/llm-monitor-ui";
 
 type Metric = "mention_rate" | "avg_sentiment" | "avg_rank" | "error_count";
 

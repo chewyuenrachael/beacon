@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { logObservation } from "@/lib/observations";
-import { supabaseAdmin } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 import { inferInstitutionEntityId } from "@/lib/sheerid-mock";
 import {
   approveVerificationBodySchema,

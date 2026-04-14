@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { AmbassadorTable } from "@/components/ambassadors/AmbassadorTable";
 import { mapAmbassadorRow } from "@/lib/ambassador-pipeline";
-import { createServerComponentClient } from "@/lib/supabase";
+import { createServerComponentClient } from "@/lib/supabase-server";
 import type { AmbassadorStage } from "@/lib/types";
 import { AMBASSADOR_STAGES } from "@/lib/types";
 

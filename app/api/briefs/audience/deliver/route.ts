@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { supabaseAdmin } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 import type { Audience } from "@/lib/types";
 
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || "https://dailybeacon-one.vercel.app";
@@ -56,7 +56,7 @@ function buildSlackBlocks(
       elements: [
         {
           type: "mrkdwn",
-          text: `<${BASE_URL}/dashboard/brief?audience=${audience.slug}|View full brief in Beacon>`,
+          text: `<${BASE_URL}/dashboard|View in Beacon>`,
         },
       ],
     });
@@ -68,7 +68,7 @@ function buildSlackBlocks(
       {
         type: "button",
         text: { type: "plain_text", text: "View in Beacon" },
-        url: `${BASE_URL}/dashboard/brief?audience=${audience.slug}`,
+        url: `${BASE_URL}/dashboard`,
         action_id: "view_audience_brief",
       },
     ],

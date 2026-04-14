@@ -4,7 +4,7 @@
  */
 
 import { logObservation } from "@/lib/observations";
-import { supabaseAdmin } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 import type { Event, EventAttendee, EventStatus, EventType } from "@/lib/types/event";
 import type { Observation, ObservationSource, ObservationType } from "@/lib/types";
 

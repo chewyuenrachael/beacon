@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabaseAdmin } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 import type { ProbeCategory } from "@/lib/types";
 
 const VALID_CATEGORIES: ProbeCategory[] = [

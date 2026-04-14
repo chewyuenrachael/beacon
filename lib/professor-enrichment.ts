@@ -15,7 +15,7 @@ import { subMonths } from "date-fns";
 import { logObservation } from "@/lib/observations";
 import type { Professor } from "@/lib/types";
 import { matchPaperKeywords } from "@/lib/keyword-paper-match";
-import { supabaseAdmin } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 import { fetchRecentPapers } from "@/lib/sources/arxiv";
 
 const SLICE_CONFIDENCE = 0.9;

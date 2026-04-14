@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { subDays } from "date-fns";
-import { supabaseAdmin } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 import type { RegionStatsResponse } from "@/lib/types";
 
 async function generateNarrative(

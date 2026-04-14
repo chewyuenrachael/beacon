@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { randomUUID } from "crypto";
-import { supabaseAdmin } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 import { createEventWithObservation } from "@/lib/event-mutations";
 import type { Event, EventStatus, EventType } from "@/lib/types/event";
 import { createEventBodySchema, listEventsQuerySchema } from "./schemas";

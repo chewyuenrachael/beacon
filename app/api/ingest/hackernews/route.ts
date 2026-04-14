@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { supabaseAdmin } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 import { ingestHackerNews } from "@/lib/sources/hn";
 import { cleanMentionText } from "@/lib/sources";
 

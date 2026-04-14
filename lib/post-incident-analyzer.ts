@@ -2,7 +2,7 @@
 // Post-Incident Analyzer — generates post-mortem reviews
 // ============================================================
 
-import { supabaseAdmin } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 
 export interface PostIncidentReview {
   what_happened: string;
