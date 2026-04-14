@@ -7,7 +7,7 @@ import {
   student_org_president_prompt,
   ta_prompt,
 } from "@/lib/outreach-prompts";
-import { supabaseAdmin } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 import type { Professor } from "@/lib/types";
 import {
   isProfessorLinkedTargetType,
