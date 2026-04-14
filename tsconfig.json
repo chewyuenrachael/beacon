@@ -56,7 +56,6 @@
     "components/ResponseDraftEditor.tsx",
     "components/StakeholderChecklist.tsx",
     "components/TemplateSelector.tsx",
-    "lib/outreach-generator.ts",
     "lib/prioritization-scoring.ts"
   ]
 }

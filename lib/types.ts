@@ -9,3 +9,4 @@ export * from "./types/event";
 export * from "./types/resource";
 export * from "./types/discount";
 export * from "./types/intelligence";
+export * from "./types/outreach";
