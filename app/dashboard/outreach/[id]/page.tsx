@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { OutreachDetailClient } from "./OutreachDetailClient";
 import { mapOutreachTouchpointRow } from "@/lib/outreach-generator";
-import { createServerComponentClient } from "@/lib/supabase";
+import { createServerComponentClient } from "@/lib/supabase-server";
 import type { Observation } from "@/lib/types";
 import { isProfessorLinkedTargetType } from "@/lib/types/outreach";
 
