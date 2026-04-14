@@ -39,7 +39,10 @@ export type ObservationType =
   | "hackathon_detected"
   | "student_org_detected"
   | "verification_attempted"
-  | "action_completed";
+  | "action_completed"
+  | "event_created"
+  | "event_updated"
+  | "event_attendee_recorded";
 
 export type ObservationSource =
   | "arxiv"
@@ -61,7 +64,10 @@ export interface Observation {
     | "professor"
     | "ambassador"
     | "student_org"
-    | "outreach";
+    | "outreach"
+    | "event"
+    | "resource"
+    | "verification";
   entity_id: string;
   observation_type: ObservationType;
   payload: Record<string, unknown>;
