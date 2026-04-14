@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { subDays, format } from "date-fns";
-import { supabaseAdmin } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 import type { TensionStatsResponse } from "@/lib/types";
 
 export async function GET(request: NextRequest) {

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { z } from "zod";
-import { createBrowserComponentClient } from "@/lib/supabase";
+import { createBrowserComponentClient } from "@/lib/supabase-browser";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 

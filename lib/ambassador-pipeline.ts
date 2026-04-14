@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { logObservation } from "@/lib/observations";
-import { supabaseAdmin } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 import type {
   Ambassador,
   AmbassadorStage,

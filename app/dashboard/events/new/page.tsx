@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { createServerComponentClient } from "@/lib/supabase";
+import { createServerComponentClient } from "@/lib/supabase-server";
 import { NewEventForm } from "./NewEventForm";
 
 export default async function NewEventPage() {

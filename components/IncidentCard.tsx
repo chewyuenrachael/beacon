@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import type { Incident } from "@/app/dashboard/warroom/types";
-import { SEVERITY_CONFIG, STATUS_CONFIG, formatElapsed } from "@/app/dashboard/warroom/types";
+import type { Incident } from "@/lib/warroom-ui";
+import { SEVERITY_CONFIG, STATUS_CONFIG, formatElapsed } from "@/lib/warroom-ui";
 
 interface IncidentCardProps {
   incident: Incident;
@@ -22,7 +22,7 @@ export default function IncidentCard({ incident, now }: IncidentCardProps) {
   const stakeholderPct = stTotal > 0 ? Math.round((stNotified / stTotal) * 100) : 0;
 
   return (
-    <Link href={`/dashboard/warroom/${incident.id}`}>
+    <Link href="/dashboard">
       <div
         className={`bg-white border border-cream-200 rounded-lg overflow-hidden hover:shadow-md transition-shadow cursor-pointer border-l-4 ${sev.border}`}
       >
@@ -97,7 +97,7 @@ export default function IncidentCard({ incident, now }: IncidentCardProps) {
               {status.label}
             </span>
             <span className="text-xs text-accent-terracotta font-medium">
-              Open War Room &rarr;
+              Open dashboard &rarr;
             </span>
           </div>
         </div>

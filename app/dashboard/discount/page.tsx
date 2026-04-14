@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { startOfWeek } from "date-fns";
-import { supabaseAdmin } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 import { MetricCard } from "@/components/ui/MetricCard";
 import { Card } from "@/components/ui/Card";
 import type { Observation } from "@/lib/types";

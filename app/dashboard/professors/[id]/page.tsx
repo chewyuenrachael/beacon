@@ -1,4 +1,4 @@
-import { createServerComponentClient } from "@/lib/supabase";
+import { createServerComponentClient } from "@/lib/supabase-server";
 import { listObservationsForProfessor } from "@/lib/observations";
 import { MetricCard } from "@/components/ui/MetricCard.forge";
 import { Card } from "@/components/ui/Card";

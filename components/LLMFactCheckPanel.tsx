@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import type { LLMFactError } from "@/app/dashboard/llm-monitor/types";
-import { PLATFORM_LABELS } from "@/app/dashboard/llm-monitor/types";
+import type { LLMFactError } from "@/lib/llm-monitor-ui";
+import { PLATFORM_LABELS } from "@/lib/llm-monitor-ui";
 
 interface Props {
   errors: LLMFactError[];

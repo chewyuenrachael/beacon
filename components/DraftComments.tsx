@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import { formatDistanceToNow } from "date-fns";
-import type { DraftComment, StakeholderRole } from "@/app/dashboard/warroom/types";
-import { ROLE_CONFIG } from "@/app/dashboard/warroom/types";
+import type { DraftComment, StakeholderRole } from "@/lib/warroom-ui";
+import { ROLE_CONFIG } from "@/lib/warroom-ui";
 
 interface DraftCommentsProps {
   comments: DraftComment[];

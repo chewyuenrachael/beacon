@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { supabaseAdmin } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 import { EventChecklist } from "@/components/events/EventChecklist";
 import { AttendanceCapture } from "@/components/events/AttendanceCapture";
 import { Card } from "@/components/ui/Card";

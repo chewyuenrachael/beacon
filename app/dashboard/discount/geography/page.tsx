@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { supabaseAdmin } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 import {
   countryLabelToIso3,
   FORUM_GAP_ISO3,

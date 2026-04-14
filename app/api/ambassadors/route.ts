@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import { scoreAmbassador } from "@/lib/ambassador-scoring";
 import { logObservation } from "@/lib/observations";
-import { supabaseAdmin } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 import { createAmbassadorBodySchema } from "./schemas";
 
 export async function POST(request: Request) {

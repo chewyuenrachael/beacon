@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { ResponseTemplate, Incident } from "@/app/dashboard/warroom/types";
-import { CHANNEL_CONFIG, safeFetchArray } from "@/app/dashboard/warroom/types";
+import type { ResponseTemplate, Incident } from "@/lib/warroom-ui";
+import { CHANNEL_CONFIG, safeFetchArray } from "@/lib/warroom-ui";
 
 interface TemplateSelectorProps {
   incident: Incident;

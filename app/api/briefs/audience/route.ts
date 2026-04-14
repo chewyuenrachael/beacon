@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { supabaseAdmin } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 import type { Audience, MentionRow } from "@/lib/types";
 
 function delay(ms: number): Promise<void> {

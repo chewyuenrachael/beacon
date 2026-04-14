@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { supabaseAdmin } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 import type { VerificationAttempt } from "@/lib/types/discount";
 import { VerificationQueue } from "@/components/discount/VerificationQueue";
 import { Card } from "@/components/ui/Card";

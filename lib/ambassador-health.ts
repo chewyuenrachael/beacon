@@ -1,6 +1,6 @@
 import { differenceInCalendarDays } from "date-fns";
 import { logObservation } from "@/lib/observations";
-import { supabaseAdmin } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 import { mapAmbassadorRow } from "@/lib/ambassador-pipeline";
 
 export interface AmbassadorHealthSignals {

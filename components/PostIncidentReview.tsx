@@ -6,8 +6,8 @@ import type {
   PostIncidentReview as PostIncidentReviewType,
   ActionItem,
   Incident,
-} from "@/app/dashboard/warroom/types";
-import { safeFetch } from "@/app/dashboard/warroom/types";
+} from "@/lib/warroom-ui";
+import { safeFetch } from "@/lib/warroom-ui";
 
 interface PostIncidentReviewProps {
   incidentId: string;

@@ -3,7 +3,7 @@
  */
 
 import { logObservation } from "@/lib/observations";
-import { supabaseAdmin } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 import type { Event, EventAttendee, EventStatus, EventType } from "@/lib/types/event";
 
 function mapEventRow(row: Record<string, unknown>): Event {

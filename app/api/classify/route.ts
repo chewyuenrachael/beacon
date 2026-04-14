@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { supabaseAdmin } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 import { classifyBatch } from "@/lib/classify";
 import { sendSingleFireAlert } from "@/lib/alerts";
 import { routeMentionToAudiences } from "@/lib/audience-routing";

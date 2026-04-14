@@ -1,6 +1,6 @@
 /**
  * Transform raw Supabase LLM response rows into the shape expected by
- * the dashboard (app/dashboard/llm-monitor/types.ts).
+ * the UI layer (lib/llm-monitor-ui.ts).
  */
 
 const SEVERITY_MAP: Record<string, string> = {

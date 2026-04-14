@@ -1,8 +1,8 @@
 "use client";
 
 import { formatDistanceToNow } from "date-fns";
-import type { LLMPlatformSummary } from "@/app/dashboard/llm-monitor/types";
-import { PLATFORM_COLORS, PLATFORM_LABELS } from "@/app/dashboard/llm-monitor/types";
+import type { LLMPlatformSummary } from "@/lib/llm-monitor-ui";
+import { PLATFORM_COLORS, PLATFORM_LABELS } from "@/lib/llm-monitor-ui";
 
 interface Props {
   summary: LLMPlatformSummary;

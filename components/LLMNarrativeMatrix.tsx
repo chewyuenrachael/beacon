@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { PLATFORM_COLORS, PLATFORM_LABELS } from "@/app/dashboard/llm-monitor/types";
+import { PLATFORM_COLORS, PLATFORM_LABELS } from "@/lib/llm-monitor-ui";
 
 interface CellData {
   present: boolean;

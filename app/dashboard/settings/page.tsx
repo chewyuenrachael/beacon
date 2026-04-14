@@ -3,10 +3,10 @@
 import { useEffect, useState } from "react";
 import { formatDistanceToNow } from "date-fns";
 import type { KeywordRow, IngestionLogRow, Audience } from "@/lib/types";
-import type { LLMProbe, ProbeCategory } from "@/app/dashboard/llm-monitor/types";
-import { PROBE_CATEGORIES, PLATFORM_LABELS } from "@/app/dashboard/llm-monitor/types";
-import type { ResponseTemplate, DraftChannel } from "@/app/dashboard/warroom/types";
-import { CHANNEL_CONFIG } from "@/app/dashboard/warroom/types";
+import type { LLMProbe, ProbeCategory } from "@/lib/llm-monitor-ui";
+import { PROBE_CATEGORIES, PLATFORM_LABELS } from "@/lib/llm-monitor-ui";
+import type { ResponseTemplate, DraftChannel } from "@/lib/warroom-ui";
+import { CHANNEL_CONFIG } from "@/lib/warroom-ui";
 import NarrativeSettings from "@/components/NarrativeSettings";
 
 const AUDIENCE_EMOJI: Record<string, string> = {

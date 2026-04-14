@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useMemo } from "react";
-import type { LLMResponse, LLMResponseHighlight } from "@/app/dashboard/llm-monitor/types";
-import { PLATFORM_COLORS, PLATFORM_LABELS } from "@/app/dashboard/llm-monitor/types";
+import type { LLMResponse, LLMResponseHighlight } from "@/lib/llm-monitor-ui";
+import { PLATFORM_COLORS, PLATFORM_LABELS } from "@/lib/llm-monitor-ui";
 
 interface Props {
   response: LLMResponse;

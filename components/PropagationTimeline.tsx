@@ -229,14 +229,14 @@ export default function PropagationTimeline({ cluster, onClose }: PropagationTim
             })}
           </div>
 
-          {/* War Room link */}
+          {/* High-urgency story link */}
           {cluster.has_fire && (
             <Link
-              href="/dashboard/warroom"
+              href="/dashboard"
               className="block text-center text-sm text-red-600 hover:text-red-700 border border-red-200 rounded-lg py-2.5 hover:bg-red-50 transition-colors"
             >
               {"\uD83D\uDEA8"} This story has an active incident.{" "}
-              <span className="underline">Open War Room {"\u2192"}</span>
+              <span className="underline">Open dashboard {"\u2192"}</span>
             </Link>
           )}
         </div>

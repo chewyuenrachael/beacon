@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { computeHealthScore } from "@/lib/ambassador-health";
 import { mapAmbassadorRow } from "@/lib/ambassador-pipeline";
-import { supabaseAdmin } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 import { ambassadorIdParamsSchema } from "../../schemas";
 
 export async function POST(

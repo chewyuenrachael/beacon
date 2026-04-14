@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabaseAdmin } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 import { manualRouteToAudience, removeManualRoute } from "@/lib/audience-routing";
 
 export async function PATCH(

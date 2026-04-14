@@ -1,4 +1,4 @@
-import { createServerComponentClient } from "@/lib/supabase";
+import { createServerComponentClient } from "@/lib/supabase-server";
 import { AmbassadorApplicationForm } from "./AmbassadorApplicationForm";
 
 export default async function NewAmbassadorPage() {
