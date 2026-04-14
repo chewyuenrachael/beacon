@@ -1,5 +1,5 @@
 import { addDays } from "date-fns";
-import { supabaseAdmin } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 import {
   getInstitutionMetrics,
   describeCoverageGaps,
