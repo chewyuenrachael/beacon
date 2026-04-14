@@ -89,15 +89,23 @@ export default async function DiscountGeographyPage() {
         </Link>
       </div>
 
-      <div className="rounded-md border border-amber-200 bg-amber-50/80 px-4 py-3 text-sm text-amber-950">
-        <p className="font-medium">Unsolved forum-scale gaps</p>
-        <p className="mt-1 text-amber-900/90">
-          India: <strong>{indiaCount}</strong> failures in seed data · Romania:{" "}
-          <strong>{romaniaCount}</strong> · Italy is also modeled as{" "}
-          <code className="text-xs">country_unsupported</code> in the mock (same
-          class of problem as IND / ROU on the map when present).
-        </p>
-      </div>
+      {(indiaCount > 0 || romaniaCount > 0) && (
+        <div className="rounded-md border border-amber-200 bg-amber-50/80 px-4 py-3 text-sm text-amber-950">
+          <p className="font-medium">Unsolved forum-scale gaps</p>
+          <p className="mt-1 text-amber-900/90">
+            {indiaCount > 0 && (
+              <>India: <strong>{indiaCount}</strong> failure{indiaCount !== 1 ? "s" : ""}</>
+            )}
+            {indiaCount > 0 && romaniaCount > 0 && " · "}
+            {romaniaCount > 0 && (
+              <>Romania: <strong>{romaniaCount}</strong> failure{romaniaCount !== 1 ? "s" : ""}</>
+            )}
+            {" — "}these regions return{" "}
+            <code className="text-xs bg-amber-100/60 px-1 rounded">country_unsupported</code>{" "}
+            from SheerID and require manual review.
+          </p>
+        </div>
+      )}
 
       <Card header="Failure density (ISO-3)">
         <GeographyMap countsByIso={countsByIso} />
