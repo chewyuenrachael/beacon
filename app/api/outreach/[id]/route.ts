@@ -4,7 +4,7 @@ import {
   isLegalOutreachTransition,
   mapOutreachTouchpointRow,
 } from "@/lib/outreach-generator";
-import { supabaseAdmin } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 import {
   isProfessorLinkedTargetType,
   type OutreachStage,
