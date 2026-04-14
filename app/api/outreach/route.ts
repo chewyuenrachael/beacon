@@ -3,7 +3,7 @@ import {
   generateOutreachDraft,
   mapOutreachTouchpointRow,
 } from "@/lib/outreach-generator";
-import { supabaseAdmin } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 import { isProfessorLinkedTargetType } from "@/lib/types/outreach";
 import { createOutreachBodySchema, listOutreachQuerySchema } from "./schemas";
 
