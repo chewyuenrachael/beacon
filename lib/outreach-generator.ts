@@ -1,432 +1,560 @@
-import { getDb } from './db'
-import { logEvent } from './event-log'
-import { isAPIAvailable, generateCompletion } from './anthropic'
-import type { Prospect, Signal, Capability, CustomerCategoryDef, ProspectContact, OutreachRecord } from '@/types'
-import type { PipelineStage } from '@/lib/constants'
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { logObservation } from "@/lib/observations";
+import {
+  department_chair_prompt,
+  hackathon_organizer_prompt,
+  pi_prompt,
+  student_org_president_prompt,
+  ta_prompt,
+} from "@/lib/outreach-prompts";
+import { supabaseAdmin } from "@/lib/supabase";
+import type { Professor } from "@/lib/types";
+import {
+  isProfessorLinkedTargetType,
+  type OutreachChannel,
+  type OutreachDraftResult,
+  type OutreachStage,
+  type OutreachTargetType,
+  type OutreachTouchpoint,
+  type PaperMatchFactLine,
+  type ReferencedFact,
+} from "@/lib/types/outreach";
 
-// ─── Types ─────────────────────────────────────────────────────────────
+const CLAUDE_MODEL = "claude-sonnet-4-20250514";
 
-export interface OutreachRequest {
-  prospect: Prospect
-  signal: Signal
-  audience: 'ml_engineer' | 'cto' | 'compliance' | 'researcher' | 'ai_community'
-  capabilities: Capability[]
-  categoryDef: CustomerCategoryDef
-}
+const STAGE_ORDER: OutreachStage[] = [
+  "cold",
+  "contacted",
+  "meeting_booked",
+  "demo_held",
+  "partnership_active",
+];
 
-export interface GeneratedOutreach {
-  subject: string
-  body: string
-  audience: string
-  differentiationLevel: 'surface' | 'mechanism' | 'proof'
-  categoryValueProp: string
-  signalReference: string
-  benchmarks: string[]
-  mailtoLink: string
-  gmailLink: string
-}
-
-// ─── Audience Configuration ────────────────────────────────────────────
-
-interface AudienceConfig {
-  salutation: string
-  signOff: string
-  tone: string
-}
-
-const AUDIENCE_CONFIG: Record<string, AudienceConfig> = {
-  ml_engineer: {
-    salutation: 'Hi',
-    signOff: 'Best regards',
-    tone: 'technical',
-  },
-  cto: {
-    salutation: 'Hi',
-    signOff: 'Best regards',
-    tone: 'strategic',
-  },
-  compliance: {
-    salutation: 'Dear Compliance Team',
-    signOff: 'Kind regards',
-    tone: 'formal',
-  },
-  researcher: {
-    salutation: 'Dear Dr.',
-    signOff: 'Best regards',
-    tone: 'academic',
-  },
-  ai_community: {
-    salutation: 'Hi',
-    signOff: 'Best',
-    tone: 'accessible',
-  },
-}
-
-// ─── CTA by Pipeline Stage ─────────────────────────────────────────────
-
-function selectCTA(stage: PipelineStage): string {
-  switch (stage) {
-    case 'signal_detected':
-      return 'Would a 15-minute call next week make sense to explore this?'
-    case 'outreach_sent':
-      return 'I sent a note recently about this topic. Wanted to follow up with a specific example that might be relevant.'
-    case 'response_received':
-      return 'Thanks for your interest. Would it be helpful to schedule a technical deep-dive?'
-    case 'meeting_booked':
-      return 'Looking forward to our conversation. I prepared a brief analysis that I think you will find useful.'
-    case 'discovery_complete':
-      return 'Based on our conversation, I have put together a scoping document. Shall we schedule a review?'
-    case 'proposal_sent':
-      return 'I wanted to check in on the proposal and see if there are any questions I can address.'
-    case 'verbal_agreement':
-    case 'contract_signed':
-      return 'Looking forward to finalizing the details and getting started.'
-    case 'lost':
-      return 'I understand the timing was not right previously. Circumstances may have changed — would it be worth a brief conversation?'
-  }
-}
-
-// ─── Contact Matching ──────────────────────────────────────────────────
-
-function findBestContact(prospect: Prospect, audience: string): ProspectContact | null {
-  if (prospect.contacts.length === 0) return null
-  const personaMap: Record<string, string[]> = {
-    ml_engineer: ['ml_engineer', 'researcher'],
-    cto: ['cto', 'executive'],
-    compliance: ['compliance', 'executive'],
-    researcher: ['researcher', 'ml_engineer'],
-    ai_community: ['ml_engineer', 'cto'],
-  }
-  const preferred = personaMap[audience] ?? []
-  for (const persona of preferred) {
-    const match = prospect.contacts.find((c) => c.persona === persona)
-    if (match) return match
-  }
-  return prospect.contacts[0] ?? null
-}
-
-// ─── Link Builders ─────────────────────────────────────────────────────
-
-export function buildMailtoLink(to: string | null, subject: string, body: string): string {
-  const recipient = to ?? ''
-  return `mailto:${recipient}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
-}
-
-export function buildGmailLink(to: string | null, subject: string, body: string): string {
-  const recipient = to ?? ''
-  return `https://mail.google.com/mail/?view=cm&to=${encodeURIComponent(recipient)}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
-}
-
-// ─── Subject Line Generation ───────────────────────────────────────────
-
-function buildSubject(request: OutreachRequest): string {
-  const { prospect, signal, audience, capabilities } = request
-  const capName = capabilities[0]?.name ?? 'interpretability'
-  const painFocus = prospect.pain_points[0] ?? 'AI model transparency'
-
-  switch (audience) {
-    case 'ml_engineer':
-      return `${capName} for ${painFocus.toLowerCase()}: ${signal.title}`
-    case 'cto':
-      return `${signal.title} — ROI impact for ${prospect.name}`
-    case 'compliance': {
-      const regulation = prospect.regulatory_exposure[0] ?? 'AI governance'
-      return `${regulation} readiness: interpretability assessment for ${prospect.name}`
+function mapProfessorRow(row: Record<string, unknown>): Professor {
+  let public_statements: Professor["public_statements"] = [];
+  const raw = row.public_statements;
+  if (Array.isArray(raw)) {
+    public_statements = raw as Professor["public_statements"];
+  } else if (typeof raw === "string") {
+    try {
+      public_statements = JSON.parse(raw) as Professor["public_statements"];
+    } catch {
+      public_statements = [];
     }
-    case 'researcher':
-      return `Interpretability research: ${capabilities[0]?.paper_title ?? 'SAE-based analysis'} and ${painFocus.toLowerCase()}`
-    case 'ai_community':
-      return `How interpretability addresses ${signal.title.toLowerCase()}`
   }
-}
-
-// ─── Differentiation Block ─────────────────────────────────────────────
-
-function buildDifferentiationBlock(capabilities: Capability[], prospect: Prospect): { surface: string; mechanism: string; proof: string } {
-  const modelRef = prospect.model_families[0] ?? 'your models'
-
-  const surface = 'Goodfire provides interpretability infrastructure for enterprise AI: we look inside the model to detect, understand, and fix behaviors before they reach production. Our platform covers hallucination reduction, inference cost optimization, runtime guardrails, and regulatory compliance evidence.'
-
-  const mechanism = `How it works: Sparse Autoencoder (SAE) probes decompose neural network internals into interpretable features. When ${modelRef} hallucinates, we identify the specific internal components responsible — not just flag the output, but diagnose the cause and fix it permanently. These features also serve as confidence detectors for reasoning chain early exit (cutting inference costs) and as real-time classifiers for safety guardrails (sub-millisecond overhead, no separate model needed).`
-
-  const benchmarks = capabilities
-    .slice(0, 3)
-    .map((c) => {
-      const result = c.key_results[0] ?? c.description
-      return `- ${c.name} (${c.authors}, ${c.date}): ${result}`
-    })
-    .join('\n')
-  const proof = `These results are peer-reviewed and production-deployed:\n${benchmarks}`
-
-  return { surface, mechanism, proof }
-}
-
-// ─── Opening Paragraph ─────────────────────────────────────────────────
-
-function buildOpening(request: OutreachRequest): string {
-  const { prospect, signal, audience } = request
-  const modelRef = prospect.model_families[0] ?? 'production models'
-  const painFocus = prospect.pain_points[0] ?? 'AI model transparency'
-  const regulation = prospect.regulatory_exposure[0] ?? null
-
-  switch (audience) {
-    case 'ml_engineer':
-      return `I noticed ${signal.title.toLowerCase()} — this has direct implications for teams running ${modelRef} in production. At Goodfire, we have built interpretability techniques that address ${painFocus.toLowerCase()} at the feature level, not just at the output layer.`
-    case 'cto':
-      return `${signal.title} creates both risk and opportunity for AI-forward organizations like ${prospect.name}. Goodfire is the commercial leader in AI interpretability — we turn model transparency into measurable ROI through reduced inference costs, fewer hallucination incidents, and regulatory compliance.`
-    case 'compliance':
-      return `${signal.title} underscores the growing regulatory expectation for AI transparency and interpretability. For ${prospect.name}${regulation ? `, with exposure to ${regulation}` : ''}, meeting these requirements demands interpretability infrastructure that produces audit-ready evidence.`
-    case 'researcher':
-      return `${signal.title} opens significant research questions about ${painFocus.toLowerCase()}. Our published work demonstrates that mechanistic interpretability can move beyond analysis to enable genuine scientific discovery — as demonstrated by the novel Alzheimer's biomarker class discovered through model reverse-engineering.`
-    case 'ai_community':
-      return `${signal.title} highlights why understanding AI model internals matters — not just for safety, but for practical cost reduction and scientific discovery. Goodfire is turning interpretability research into production tools.`
-  }
-}
-
-// ─── Template-Based Outreach Generation ────────────────────────────────
-
-export function generateOutreach(request: OutreachRequest): GeneratedOutreach {
-  const { prospect, signal, audience, capabilities, categoryDef } = request
-  const config = AUDIENCE_CONFIG[audience] ?? AUDIENCE_CONFIG['cto'] ?? { salutation: 'Hi', signOff: 'Best regards,\nThe Goodfire Team', tone: 'professional', focus: 'technical' }
-
-  const subject = buildSubject(request)
-  const opening = buildOpening(request)
-  const diff = buildDifferentiationBlock(capabilities, prospect)
-  const cta = selectCTA(prospect.pipeline_stage)
-
-  // Always use proof level for templates (most powerful)
-  const differentiationLevel: GeneratedOutreach['differentiationLevel'] = 'proof'
-  const diffBlock = diff[differentiationLevel]
-
-  const benchmarks: string[] = capabilities
-    .slice(0, 3)
-    .map((c) => c.key_results[0])
-    .filter((r): r is string => r !== undefined)
-
-  const body = `${config.salutation},
-
-${opening}
-
-${categoryDef.goodfire_value_prop}
-
-${diffBlock}
-
-${cta}
-
-${config.signOff}`
-
-  const contact = findBestContact(prospect, audience)
-  const contactEmail = contact?.email ?? null
 
   return {
-    subject,
-    body,
-    audience,
-    differentiationLevel,
-    categoryValueProp: categoryDef.goodfire_value_prop,
-    signalReference: signal.title,
-    benchmarks,
-    mailtoLink: buildMailtoLink(contactEmail, subject, body),
-    gmailLink: buildGmailLink(contactEmail, subject, body),
+    id: row.id as string,
+    institution_id: row.institution_id as string,
+    name: row.name as string,
+    title: (row.title as string | null) ?? undefined,
+    lab_name: (row.lab_name as string | null) ?? undefined,
+    arxiv_author_id: (row.arxiv_author_id as string | null) ?? undefined,
+    homepage_url: (row.homepage_url as string | null) ?? undefined,
+    recent_relevant_papers_count: Number(row.recent_relevant_papers_count ?? 0),
+    ai_stance_quote: (row.ai_stance_quote as string | null) ?? undefined,
+    ai_stance_source_url: (row.ai_stance_source_url as string | null) ?? undefined,
+    public_statements,
+    last_enriched_at: (row.last_enriched_at as string | null) ?? undefined,
+  };
+}
+
+function usesProfessorContext(targetType: OutreachTargetType): boolean {
+  return isProfessorLinkedTargetType(targetType);
+}
+
+function promptForTargetType(targetType: OutreachTargetType): string {
+  switch (targetType) {
+    case "professor":
+      return pi_prompt;
+    case "ta":
+      return ta_prompt;
+    case "department_chair":
+      return department_chair_prompt;
+    case "student_org":
+      return student_org_president_prompt;
+    case "hackathon_organizer":
+      return hackathon_organizer_prompt;
+    default:
+      return pi_prompt;
   }
 }
 
-// ─── AI-Powered Outreach Generation ────────────────────────────────────
-
-export async function generateOutreachWithAPI(request: OutreachRequest): Promise<GeneratedOutreach> {
-  if (!isAPIAvailable()) {
-    return generateOutreach(request)
-  }
-
-  const { prospect, signal, audience, capabilities, categoryDef } = request
-
-  const capSummary = capabilities
-    .slice(0, 5)
-    .map((c) => `- ${c.name}: ${c.key_results[0] ?? c.description}`)
-    .join('\n')
-
-  const systemPrompt = `You are writing outreach for Goodfire, an AI interpretability research company. Write a concise, personalized email. No hype. No buzzwords. Let the evidence speak. The recipient is a ${audience.replace('_', ' ')} at a ${categoryDef.name} company.
-
-Rules:
-- Use the 3-level differentiation framework: surface (what we do), mechanism (how it works), proof (published results)
-- Include specific benchmarks with citations from the capabilities provided
-- Match tone to the audience: ${AUDIENCE_CONFIG[audience]?.tone ?? 'professional'}
-- Keep the email under 300 words
-- Do NOT use placeholder text or generic filler
-- The email should reference the triggering signal naturally
-- Return ONLY valid JSON with this exact structure: {"subject": "...", "body": "...", "differentiationLevel": "surface|mechanism|proof", "benchmarks": ["..."]}
-
-Category value proposition to weave in: "${categoryDef.goodfire_value_prop}"
-
-Available capabilities and results:
-${capSummary}`
-
-  const userMessage = `Generate a personalized outreach email for ${prospect.name} (${prospect.industry}, ${prospect.customer_category}).
-
-Triggering signal: ${signal.title} — ${signal.description}
-Prospect pain points: ${prospect.pain_points.join(', ')}
-Regulatory exposure: ${prospect.regulatory_exposure.join(', ') || 'None specified'}
-Model families: ${prospect.model_families.join(', ') || 'Not specified'}
-Pipeline stage: ${prospect.pipeline_stage}
-Audience: ${audience}`
-
-  try {
-    const raw = await generateCompletion(systemPrompt, userMessage)
-
-    // Try to parse JSON from the response (handle markdown code blocks)
-    let jsonStr = raw
-    const codeBlockMatch = raw.match(/```(?:json)?\s*([\s\S]*?)```/)
-    if (codeBlockMatch?.[1]) {
-      jsonStr = codeBlockMatch[1].trim()
-    }
-
-    const parsed = JSON.parse(jsonStr) as {
-      subject?: string
-      body?: string
-      differentiationLevel?: string
-      benchmarks?: string[]
-    }
-
-    if (!parsed.subject || !parsed.body) {
-      return generateOutreach(request)
-    }
-
-    const validLevels = ['surface', 'mechanism', 'proof'] as const
-    const diffLevel = validLevels.find((l) => l === parsed.differentiationLevel) ?? 'proof'
-    const benchmarks = Array.isArray(parsed.benchmarks) ? parsed.benchmarks.filter((b): b is string => typeof b === 'string') : []
-
-    const contact = findBestContact(prospect, audience)
-    const contactEmail = contact?.email ?? null
-
-    return {
-      subject: parsed.subject,
-      body: parsed.body,
-      audience,
-      differentiationLevel: diffLevel,
-      categoryValueProp: categoryDef.goodfire_value_prop,
-      signalReference: signal.title,
-      benchmarks,
-      mailtoLink: buildMailtoLink(contactEmail, parsed.subject, parsed.body),
-      gmailLink: buildGmailLink(contactEmail, parsed.subject, parsed.body),
-    }
-  } catch {
-    return generateOutreach(request)
-  }
+function abstractSnippet(abstract: unknown): string {
+  if (typeof abstract !== "string" || !abstract.length) return "";
+  return abstract.slice(0, 400);
 }
 
-// ─── Burst Outreach Generation ─────────────────────────────────────────
+export async function fetchPaperMatchLines(
+  client: SupabaseClient,
+  professorId: string,
+  limit: number
+): Promise<PaperMatchFactLine[]> {
+  const { data, error } = await client
+    .from("observations")
+    .select("payload, observed_at, source_url")
+    .eq("entity_type", "professor")
+    .eq("entity_id", professorId)
+    .eq("observation_type", "paper_matches_keywords")
+    .order("observed_at", { ascending: false })
+    .limit(limit * 3);
 
-export function generateBurstOutreach(
-  prospects: Prospect[],
-  signal: Signal,
-  audience: 'ml_engineer' | 'cto' | 'compliance' | 'researcher' | 'ai_community',
-  capabilities: Capability[],
-  categories: CustomerCategoryDef[]
-): GeneratedOutreach[] {
-  return prospects.map((prospect) => {
-    const categoryDef = categories.find((c) => c.id === prospect.customer_category)
-    if (!categoryDef) {
-      // Fallback: use the first category if no match
-      const fallback = categories[0]
-      if (!fallback) {
-        // Should not happen with seeded data, but handle gracefully
-        return generateOutreach({
-          prospect,
-          signal,
-          audience,
-          capabilities,
-          categoryDef: {
-            id: prospect.customer_category,
-            name: prospect.customer_category,
-            description: '',
-            avg_deal_size: { low: 0, high: 0 },
-            sales_cycle_days: { low: 0, high: 0 },
-            regulatory_tailwinds: [],
-            goodfire_value_prop: 'Goodfire provides AI interpretability infrastructure for enterprise AI.',
-            priority_rank: 99,
-          },
-        })
-      }
-      return generateOutreach({ prospect, signal, audience, capabilities, categoryDef: fallback })
-    }
-    return generateOutreach({ prospect, signal, audience, capabilities, categoryDef })
-  })
+  if (error) throw error;
+
+  const lines: PaperMatchFactLine[] = [];
+  const seenTitles = new Set<string>();
+  for (const row of data ?? []) {
+    const payload = row.payload as Record<string, unknown>;
+    const title = typeof payload.title === "string" ? payload.title : "";
+    if (!title || seenTitles.has(title)) continue;
+    seenTitles.add(title);
+    lines.push({
+      title,
+      abstract_snippet: abstractSnippet(payload.abstract),
+      observed_at: row.observed_at as string,
+      source_url:
+        typeof row.source_url === "string" ? row.source_url : undefined,
+    });
+    if (lines.length >= limit) break;
+  }
+  return lines;
 }
 
-// ─── Record Outreach ───────────────────────────────────────────────────
+async function fetchSyllabusPayloads(
+  client: SupabaseClient,
+  professorId: string
+): Promise<Array<{ text: string; source_url?: string }>> {
+  const { data, error } = await client
+    .from("observations")
+    .select("payload, source_url")
+    .eq("entity_type", "professor")
+    .eq("entity_id", professorId)
+    .eq("observation_type", "syllabus_found")
+    .order("observed_at", { ascending: false })
+    .limit(5);
 
-export function recordOutreach(
-  prospectId: string,
-  outreach: GeneratedOutreach,
-  signalId: string
-): void {
-  const db = getDb()
+  if (error) throw error;
 
-  const row = db.prepare('SELECT outreach_history, pipeline_stage, name FROM prospects WHERE id = ?').get(prospectId) as Record<string, unknown> | undefined
-  if (!row) {
-    throw new Error(`Prospect not found: ${prospectId}`)
+  const out: Array<{ text: string; source_url?: string }> = [];
+  for (const row of data ?? []) {
+    const p = row.payload as Record<string, unknown>;
+    const line =
+      typeof p.line === "string"
+        ? p.line
+        : typeof p.snippet === "string"
+          ? p.snippet
+          : typeof p.text === "string"
+            ? p.text
+            : JSON.stringify(p);
+    if (line)
+      out.push({
+        text: line,
+        source_url:
+          typeof row.source_url === "string" ? row.source_url : undefined,
+      });
+  }
+  return out;
+}
+
+/** Build grounded `referenced_facts` from professor row + observation-derived lines only. */
+export function buildReferencedFactsFromProfessorContext(params: {
+  paperLines: PaperMatchFactLine[];
+  professor: Professor;
+  syllabusLines: Array<{ text: string; source_url?: string }>;
+}): ReferencedFact[] {
+  const facts: ReferencedFact[] = [];
+  for (const p of params.paperLines) {
+    const text = `${p.title}\nAbstract snippet: ${p.abstract_snippet}`;
+    facts.push({
+      kind: "paper_match",
+      text,
+      source_url: p.source_url,
+    });
+  }
+  if (params.professor.ai_stance_quote?.trim()) {
+    facts.push({
+      kind: "ai_stance",
+      text: params.professor.ai_stance_quote.trim(),
+      source_url: params.professor.ai_stance_source_url,
+    });
+  }
+  for (const s of params.professor.public_statements ?? []) {
+    if (s.quote?.trim()) {
+      facts.push({
+        kind: "public_statement",
+        text: s.quote.trim(),
+        source_url: s.source_url,
+      });
+    }
+  }
+  for (const s of params.syllabusLines) {
+    if (s.text.trim()) {
+      facts.push({
+        kind: "syllabus",
+        text: s.text.trim(),
+        source_url: s.source_url,
+      });
+    }
+  }
+  return facts;
+}
+
+/** User-message block: verbatim titles + abstract snippets; instruction string is literal per product spec. */
+export function buildProfessorArxivFactsBundle(params: {
+  paperLines: PaperMatchFactLine[];
+  professor: Professor;
+  syllabusLines: Array<{ text: string; source_url?: string }>;
+}): string {
+  const paperBlock =
+    params.paperLines.length > 0
+      ? params.paperLines
+          .map((p, i) => {
+            return `${i + 1}. ${p.title}\n   Abstract snippet: ${p.abstract_snippet}`;
+          })
+          .join("\n\n")
+      : "(none — no paper_matches_keywords observations yet.)";
+
+  let extra = "";
+  if (params.professor.ai_stance_quote?.trim()) {
+    extra += `\n\nAI stance quote (verbatim):\n${params.professor.ai_stance_quote.trim()}`;
+  }
+  if (params.professor.public_statements?.length) {
+    extra += `\n\nPublic statements (verbatim quotes):\n${params.professor.public_statements
+      .map((s, i) => `${i + 1}. ${s.quote}`)
+      .join("\n")}`;
+  }
+  if (params.syllabusLines.length) {
+    extra += `\n\nSyllabus lines (verbatim from observations):\n${params.syllabusLines
+      .map((s, i) => `${i + 1}. ${s.text}`)
+      .join("\n")}`;
   }
 
-  let existingHistory: OutreachRecord[] = []
-  try {
-    existingHistory = JSON.parse((row['outreach_history'] as string) ?? '[]') as OutreachRecord[]
-  } catch {
-    existingHistory = []
+  return `Reference only the following facts from this professor's arxiv pipeline:
+
+Paper titles (verbatim) with abstract snippets:
+${paperBlock}${extra}
+
+Do not paraphrase paper titles. Use only the facts above plus the professor name and institution provided outside this block.`;
+}
+
+function buildTemplateDraft(params: {
+  professorName: string;
+  institutionName: string;
+  referenced_facts: ReferencedFact[];
+}): Pick<OutreachDraftResult, "subject_line" | "body" | "tone"> {
+  const titles = params.referenced_facts
+    .filter((f) => f.kind === "paper_match")
+    .map((f) => f.text.split("\n")[0])
+    .filter(Boolean);
+  const titleRef = titles[0] ?? "your recent work";
+
+  return {
+    subject_line: `Cursor for students — ${params.institutionName} (${titleRef.slice(0, 60)})`,
+    tone: "concise",
+    body: `Hi ${params.professorName},
+
+I'm the Cursor Campus Lead reaching out about our student/education program and faculty-friendly resources for AI-assisted programming courses.
+
+I noticed this line of work in our pipeline: ${titleRef}. If you are open to a short note on how other CS departments partner with Cursor, I would welcome a reply.
+
+Best,
+Cursor Campus Lead`,
+  };
+}
+
+async function callClaudeJsonDraft(params: {
+  systemPrompt: string;
+  userMessage: string;
+}): Promise<{ subject_line: string; body: string; tone: string }> {
+  const key = process.env.ANTHROPIC_API_KEY;
+  if (!key) {
+    throw new Error("ANTHROPIC_API_KEY missing");
   }
 
-  const newRecord: OutreachRecord = {
-    date: new Date().toISOString().slice(0, 10),
-    type: 'email',
-    audience_framing: outreach.audience,
-    signal_id: signalId,
-    status: 'sent',
-    notes: outreach.subject,
-  }
-
-  const updatedHistory = [...existingHistory, newRecord]
-  const pipelineStage = row['pipeline_stage'] as string
-  const prospectName = row['name'] as string
-
-  if (pipelineStage === 'signal_detected') {
-    db.prepare(
-      'UPDATE prospects SET outreach_history = ?, pipeline_stage = ?, updated_at = datetime(?) WHERE id = ?'
-    ).run(
-      JSON.stringify(updatedHistory),
-      'outreach_sent',
-      new Date().toISOString(),
-      prospectId
-    )
-
-    logEvent({
-      eventType: 'pipeline.stage_changed',
-      entityType: 'prospect',
-      entityId: prospectId,
-      payload: {
-        prospectName,
-        fromStage: 'signal_detected',
-        toStage: 'outreach_sent',
-      },
-    })
-  } else {
-    db.prepare(
-      'UPDATE prospects SET outreach_history = ?, updated_at = datetime(?) WHERE id = ?'
-    ).run(
-      JSON.stringify(updatedHistory),
-      new Date().toISOString(),
-      prospectId
-    )
-  }
-
-  logEvent({
-    eventType: 'outreach.sent',
-    entityType: 'prospect',
-    entityId: prospectId,
-    payload: {
-      prospectName,
-      audience: outreach.audience,
-      signalId,
-      subject: outreach.subject,
-      differentiationLevel: outreach.differentiationLevel,
+  const response = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": key,
+      "anthropic-version": "2023-06-01",
     },
-  })
+    body: JSON.stringify({
+      model: CLAUDE_MODEL,
+      max_tokens: 1200,
+      system: `${params.systemPrompt}
+
+Return ONLY a JSON object with keys: subject_line (string), body (string), tone (string). No markdown fences.`,
+      messages: [
+        { role: "user", content: params.userMessage },
+        { role: "assistant", content: "{" },
+      ],
+    }),
+  });
+
+  const data = (await response.json()) as {
+    error?: { message?: string };
+    content?: Array<{ text?: string }>;
+  };
+
+  if (data.error) {
+    throw new Error(data.error.message ?? JSON.stringify(data.error));
+  }
+
+  const piece = data.content?.[0]?.text;
+  if (!piece) throw new Error("Empty Claude response");
+
+  let cleaned = "{" + piece;
+  cleaned = cleaned.replace(/^```json\s*\n?/gm, "");
+  cleaned = cleaned.replace(/\n?```\s*$/gm, "");
+  cleaned = cleaned.replace(/```/g, "");
+  cleaned = cleaned.trim();
+
+  let parsed: Record<string, unknown>;
+  try {
+    parsed = JSON.parse(cleaned) as Record<string, unknown>;
+  } catch {
+    const match = cleaned.match(/\{[\s\S]*\}/);
+    if (!match) throw new Error("Invalid JSON from Claude");
+    parsed = JSON.parse(match[0]) as Record<string, unknown>;
+  }
+
+  const subject_line =
+    typeof parsed.subject_line === "string" ? parsed.subject_line : "";
+  const body = typeof parsed.body === "string" ? parsed.body : "";
+  const tone = typeof parsed.tone === "string" ? parsed.tone : "professional";
+  if (!subject_line || !body) throw new Error("Claude JSON missing fields");
+  return { subject_line, body, tone };
+}
+
+export function allowedNextOutreachStages(
+  from: OutreachStage
+): OutreachStage[] {
+  if (from === "dead") return [];
+  const idx = STAGE_ORDER.indexOf(from);
+  const next: OutreachStage[] = ["dead"];
+  if (idx >= 0 && idx < STAGE_ORDER.length - 1) {
+    next.unshift(STAGE_ORDER[idx + 1]!);
+  }
+  return next;
+}
+
+export function isLegalOutreachTransition(
+  from: OutreachStage,
+  to: OutreachStage
+): boolean {
+  if (from === to) return true;
+  if (to === "dead") return from !== "dead";
+  if (from === "dead") return false;
+  return allowedNextOutreachStages(from).includes(to);
+}
+
+export async function generateOutreachDraft(
+  targetType: OutreachTargetType,
+  targetId: string,
+  options?: {
+    supabase?: SupabaseClient;
+    touchpointId?: string;
+    /** Institution display name for prompts */
+    institutionName?: string;
+  }
+): Promise<OutreachDraftResult> {
+  const client = options?.supabase ?? supabaseAdmin;
+
+  let professor: Professor | null = null;
+  let institutionName = options?.institutionName ?? "";
+  let paperLines: PaperMatchFactLine[] = [];
+  let syllabusLines: Array<{ text: string; source_url?: string }> = [];
+  let referenced_facts: ReferencedFact[] = [];
+
+  if (usesProfessorContext(targetType)) {
+    const { data: row, error } = await client
+      .from("professors")
+      .select("*")
+      .eq("id", targetId)
+      .maybeSingle();
+
+    if (error) throw error;
+    if (!row) {
+      referenced_facts = [];
+      const empty: OutreachDraftResult = {
+        subject_line: "Outreach draft",
+        body: `We could not load professor id "${targetId}". After seed data is available, regenerate this draft.`,
+        tone: "neutral",
+        referenced_facts,
+      };
+      if (options?.touchpointId) {
+        await logObservation({
+          entity_type: "outreach",
+          entity_id: options.touchpointId,
+          observation_type: "outreach_drafted",
+          payload: {
+            target_type: targetType,
+            target_id: targetId,
+            subject_line: empty.subject_line,
+            referenced_facts,
+            tone: empty.tone,
+            template: true,
+            error: "professor_not_found",
+          },
+          source: "manual",
+          confidence: 1,
+        });
+      }
+      return empty;
+    }
+
+    professor = mapProfessorRow(row as Record<string, unknown>);
+
+    if (!institutionName) {
+      const { data: inst } = await client
+        .from("institutions")
+        .select("name")
+        .eq("id", professor.institution_id)
+        .maybeSingle();
+      institutionName =
+        (inst?.name as string | undefined) ?? professor.institution_id;
+    }
+
+    paperLines = await fetchPaperMatchLines(client, targetId, 3);
+    syllabusLines = await fetchSyllabusPayloads(client, targetId);
+    referenced_facts = buildReferencedFactsFromProfessorContext({
+      paperLines,
+      professor,
+      syllabusLines,
+    });
+
+    const factsBundle = buildProfessorArxivFactsBundle({
+      paperLines,
+      professor,
+      syllabusLines,
+    });
+
+    const systemPrompt = promptForTargetType(targetType);
+    const userMessage = `Professor name: ${professor.name}
+Institution: ${institutionName}
+
+${factsBundle}`;
+
+    let subject_line: string;
+    let body: string;
+    let tone: string;
+    let usedTemplate = false;
+
+    try {
+      if (!process.env.ANTHROPIC_API_KEY) {
+        throw new Error("no key");
+      }
+      const parsed = await callClaudeJsonDraft({ systemPrompt, userMessage });
+      subject_line = parsed.subject_line;
+      body = parsed.body;
+      tone = parsed.tone;
+    } catch {
+      usedTemplate = true;
+      const t = buildTemplateDraft({
+        professorName: professor.name,
+        institutionName,
+        referenced_facts,
+      });
+      subject_line = t.subject_line;
+      body = t.body;
+      tone = t.tone;
+    }
+
+    const result: OutreachDraftResult = {
+      subject_line,
+      body,
+      tone,
+      referenced_facts,
+    };
+
+    if (options?.touchpointId) {
+      await logObservation({
+        entity_type: "outreach",
+        entity_id: options.touchpointId,
+        observation_type: "outreach_drafted",
+        payload: {
+          target_type: targetType,
+          target_id: targetId,
+          subject_line: result.subject_line,
+          referenced_facts: result.referenced_facts,
+          tone: result.tone,
+          template: usedTemplate,
+        },
+        source: usedTemplate ? "manual" : "classification",
+        confidence: usedTemplate ? 1 : 0.75,
+      });
+    }
+
+    return result;
+  }
+
+  // Non-professor targets: minimal grounded context (org observations optional later)
+  referenced_facts = [];
+  const systemPrompt = promptForTargetType(targetType);
+  const userMessage = `Target type: ${targetType}
+Target id: ${targetId}
+No professor arxiv pipeline facts are attached for this target type. Write a brief, honest introduction offering to follow up with specifics once you learn more about their org or event.`;
+
+  let subject_line = "Cursor campus partnership";
+  let body = `Hello,\n\nI'm the Cursor Campus Lead. I would love to learn more about your work (${targetType}, ${targetId}) and share how we support student orgs and hackathons with Cursor.\n\nBest,\nCursor Campus Lead`;
+  let tone = "friendly";
+  let usedTemplate = !process.env.ANTHROPIC_API_KEY;
+
+  try {
+    if (process.env.ANTHROPIC_API_KEY) {
+      const parsed = await callClaudeJsonDraft({ systemPrompt, userMessage });
+      subject_line = parsed.subject_line;
+      body = parsed.body;
+      tone = parsed.tone;
+      usedTemplate = false;
+    }
+  } catch {
+    usedTemplate = true;
+  }
+
+  const result: OutreachDraftResult = {
+    subject_line,
+    body,
+    tone,
+    referenced_facts,
+  };
+
+  if (options?.touchpointId) {
+    await logObservation({
+      entity_type: "outreach",
+      entity_id: options.touchpointId,
+      observation_type: "outreach_drafted",
+      payload: {
+        target_type: targetType,
+        target_id: targetId,
+        subject_line: result.subject_line,
+        referenced_facts: result.referenced_facts,
+        tone: result.tone,
+        template: usedTemplate,
+      },
+      source: usedTemplate ? "manual" : "classification",
+      confidence: usedTemplate ? 1 : 0.75,
+    });
+  }
+
+  return result;
+}
+
+export function mapOutreachTouchpointRow(
+  row: Record<string, unknown>
+): OutreachTouchpoint {
+  return {
+    id: row.id as string,
+    target_type: row.target_type as OutreachTargetType,
+    target_id: row.target_id as string,
+    target_name: row.target_name as string,
+    stage: row.stage as OutreachStage,
+    channel: row.channel as OutreachChannel,
+    subject_line: (row.subject_line as string) ?? "",
+    draft_content: (row.draft_content as string) ?? "",
+    sent_at: (row.sent_at as string | null) ?? null,
+    reply_detected_at: (row.reply_detected_at as string | null) ?? null,
+    notes: (row.notes as string | null) ?? null,
+    created_at: row.created_at as string,
+  };
 }

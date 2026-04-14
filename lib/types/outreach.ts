@@ -7,6 +7,22 @@ export type OutreachTargetType =
   | "department_chair"
   | "hackathon_organizer";
 
+/** Targets whose `target_id` refers to a `professors.id` row. */
+export const PROFESSOR_LINKED_TARGET_TYPES = [
+  "professor",
+  "ta",
+  "department_chair",
+] as const;
+
+export type ProfessorLinkedTargetType =
+  (typeof PROFESSOR_LINKED_TARGET_TYPES)[number];
+
+export function isProfessorLinkedTargetType(
+  t: OutreachTargetType
+): t is ProfessorLinkedTargetType {
+  return (PROFESSOR_LINKED_TARGET_TYPES as readonly string[]).includes(t);
+}
+
 export type OutreachStage =
   | "cold"
   | "contacted"
