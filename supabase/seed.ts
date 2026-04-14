@@ -400,8 +400,155 @@ async function seed(): Promise<void> {
     ],
   });
 
+  const OT_COLD = "b1b1b1b1-b1b1-41b1-b1b1-b1b1b1b1b101";
+  const OT_CONTACTED = "b2b2b2b2-b2b2-42b2-b2b2-b2b2b2b2b202";
+  const OT_MEETING = "b3b3b3b3-b3b3-43b3-b3b3-b3b3b3b3b303";
+
+  const outreachRows = [
+    {
+      id: OT_COLD,
+      target_type: "professor" as const,
+      target_id: "graham-neubig",
+      target_name: "Graham Neubig",
+      stage: "cold" as const,
+      channel: "email" as const,
+      subject_line: "",
+      draft_content: "",
+      sent_at: null as string | null,
+      reply_detected_at: null as string | null,
+      notes: "Sample: cold pipeline (professor row from Intelligence seed).",
+    },
+    {
+      id: OT_CONTACTED,
+      target_type: "professor" as const,
+      target_id: "sasha-rush",
+      target_name: "Alexander Rush",
+      stage: "contacted" as const,
+      channel: "email" as const,
+      subject_line: "Cursor for CS pedagogy — quick intro",
+      draft_content:
+        "Hi Sasha,\n\nFollowing up on our note about Cursor for your LLM / code-generation courses. Happy to share how other faculty structure trials.\n\nBest,\nCursor Campus Lead",
+      sent_at: "2026-04-01T12:00:00.000Z",
+      reply_detected_at: null as string | null,
+      notes: "Sample: contacted with draft.",
+    },
+    {
+      id: OT_MEETING,
+      target_type: "professor" as const,
+      target_id: "sasha-rush",
+      target_name: "Alexander Rush",
+      stage: "meeting_booked" as const,
+      channel: "meeting" as const,
+      subject_line: "Demo scheduled — Cursor for Cornell NLP lab",
+      draft_content:
+        "Thanks for booking time next week. I will bring a short deck on student licensing and a syllabus-friendly pilot outline.\n\nBest,\nCursor Campus Lead",
+      sent_at: "2026-04-05T15:00:00.000Z",
+      reply_detected_at: "2026-04-06T09:30:00.000Z",
+      notes: "Sample: meeting booked + reply logged.",
+    },
+  ];
+
+  const { error: outErr } = await supabase
+    .from("outreach_touchpoints")
+    .upsert(outreachRows, { onConflict: "id" });
+  if (outErr) throw outErr;
+
+  const outreachObs = [
+    {
+      id: "c1c1c1c1-c1c1-41c1-c1c1-c1c1c1c1c101",
+      entity_type: "outreach" as const,
+      entity_id: OT_COLD,
+      observation_type: "outreach_drafted" as const,
+      payload: {
+        target_type: "professor",
+        target_id: "graham-neubig",
+        subject_line: "",
+        referenced_facts: [],
+        template: true,
+        seed: true,
+      },
+      source: "manual" as const,
+      confidence: 1,
+    },
+    {
+      id: "c2c2c2c2-c2c2-42c2-c2c2-c2c2c2c2c202",
+      entity_type: "outreach" as const,
+      entity_id: OT_CONTACTED,
+      observation_type: "outreach_drafted" as const,
+      payload: {
+        target_type: "professor",
+        target_id: "sasha-rush",
+        subject_line: outreachRows[1].subject_line,
+        template: true,
+        seed: true,
+      },
+      source: "manual" as const,
+      confidence: 1,
+    },
+    {
+      id: "c3c3c3c3-c3c3-43c3-c3c3-c3c3c3c3c303",
+      entity_type: "outreach" as const,
+      entity_id: OT_CONTACTED,
+      observation_type: "outreach_sent" as const,
+      payload: {
+        sent_at: outreachRows[1].sent_at,
+        subject_line: outreachRows[1].subject_line,
+        channel: outreachRows[1].channel,
+        seed: true,
+      },
+      source: "manual" as const,
+      confidence: 1,
+    },
+    {
+      id: "c4c4c4c4-c4c4-44c4-c4c4-c4c4c4c4c404",
+      entity_type: "outreach" as const,
+      entity_id: OT_MEETING,
+      observation_type: "outreach_drafted" as const,
+      payload: {
+        target_type: "professor",
+        target_id: "sasha-rush",
+        subject_line: outreachRows[2].subject_line,
+        template: true,
+        seed: true,
+      },
+      source: "manual" as const,
+      confidence: 1,
+    },
+    {
+      id: "c5c5c5c5-c5c5-45c5-c5c5-c5c5c5c5c505",
+      entity_type: "outreach" as const,
+      entity_id: OT_MEETING,
+      observation_type: "outreach_sent" as const,
+      payload: {
+        sent_at: outreachRows[2].sent_at,
+        subject_line: outreachRows[2].subject_line,
+        channel: outreachRows[2].channel,
+        seed: true,
+      },
+      source: "manual" as const,
+      confidence: 1,
+    },
+    {
+      id: "c6c6c6c6-c6c6-46c6-c6c6-c6c6c6c6c606",
+      entity_type: "outreach" as const,
+      entity_id: OT_MEETING,
+      observation_type: "outreach_reply_detected" as const,
+      payload: {
+        reply_detected_at: outreachRows[2].reply_detected_at,
+        seed: true,
+      },
+      source: "manual" as const,
+      confidence: 1,
+    },
+  ];
+
+  const { error: outObsErr } = await supabase
+    .from("observations")
+    .upsert(outreachObs, { onConflict: "id" });
+  if (outObsErr) throw outObsErr;
+
   console.log(
-    "Seed complete: 5 institutions (cornell, mit, stanford, cmu, oxford), 1 professor (sasha-rush), 5 verification_attempts, 3 ambassadors"
+    "Seed complete: 5 institutions (cornell, mit, stanford, cmu, oxford), 1 professor (sasha-rush), 5 verification_attempts, 3 ambassadors, 3 outreach_touchpoints"
   );
 }
 
