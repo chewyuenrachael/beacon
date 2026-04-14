@@ -1,26 +1,42 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import { createBrowserClient } from "@supabase/ssr";
 
-const NAV_ITEMS = [
-  { href: "/dashboard/warroom", label: "War Room" },
-  { href: "/dashboard/brief", label: "Brief" },
-  { href: "/dashboard/resources", label: "Resources" },
-  { href: "/dashboard/resources/analytics", label: "Resource analytics" },
-  { href: "/dashboard/ambassadors", label: "Ambassadors" },
-  { href: "/dashboard", label: "Feed" },
-  { href: "/dashboard/tensions", label: "Tensions" },
-  { href: "/dashboard/competitors", label: "Competitors" },
-  { href: "/dashboard/narratives", label: "Narratives" },
-  { href: "/dashboard/prep", label: "Prep" },
-  { href: "/dashboard/trends", label: "Trends" },
-  { href: "/dashboard/globe", label: "Globe" },
-  { href: "/dashboard/llm-monitor", label: "LLM Intelligence" },
-  { href: "/dashboard/settings", label: "Settings" },
-];
+const NAV_SECTIONS = [
+  {
+    title: "Strategic",
+    items: [
+      { href: "/dashboard", label: "Dashboard" },
+      { href: "/dashboard/workqueue", label: "Workqueue" },
+      { href: "/dashboard/professors", label: "Professors" },
+    ],
+  },
+  {
+    title: "Ambassador Ops",
+    items: [
+      { href: "/dashboard/ambassadors", label: "Ambassadors" },
+      { href: "/dashboard/resources", label: "Resources" },
+      { href: "/dashboard/resources/analytics", label: "Resource analytics" },
+    ],
+  },
+  {
+    title: "Community Ops",
+    items: [
+      { href: "/dashboard/events", label: "Events" },
+      { href: "/dashboard/discount", label: "Discount" },
+      { href: "/dashboard/discount/queue", label: "Discount Queue" },
+      { href: "/dashboard/discount/geography", label: "Discount Geography" },
+    ],
+  },
+] as const;
+
+function navItemActive(pathname: string, href: string) {
+  if (href === "/dashboard") return pathname === "/dashboard";
+  return pathname.startsWith(href);
+}
 
 export default function DashboardLayout({
   children,
@@ -30,68 +46,6 @@ export default function DashboardLayout({
   const router = useRouter();
   const pathname = usePathname();
   const [authed] = useState(true);
-  const [fireCount, setFireCount] = useState(0);
-  const [llmErrorCount, setLlmErrorCount] = useState(0);
-  const [activeIncidentCount, setActiveIncidentCount] = useState(0);
-
-  // Fetch active incident count for War Room badge
-  useEffect(() => {
-    if (!authed) return;
-    async function fetchIncidents() {
-      try {
-        const res = await fetch("/api/incidents?status=active");
-        if (!res.ok) return;
-        const json = await res.json();
-        const data = Array.isArray(json) ? json : json.data || [];
-        setActiveIncidentCount(data.length);
-      } catch {
-        // non-critical
-      }
-    }
-    fetchIncidents();
-    const interval = setInterval(fetchIncidents, 60_000);
-    return () => clearInterval(interval);
-  }, [authed]);
-
-  // Fetch unreviewed fire count for indicator dot
-  useEffect(() => {
-    if (!authed) return;
-    async function fetchFires() {
-      try {
-        const res = await fetch("/api/mentions?urgency=fire&time_range=24h&limit=100");
-        if (!res.ok) return;
-        const json = await res.json();
-        const data = json.data || json;
-        const unreviewed = Array.isArray(data)
-          ? data.filter((m: { is_reviewed?: boolean }) => !m.is_reviewed).length
-          : 0;
-        setFireCount(unreviewed);
-      } catch {
-        // non-critical
-      }
-    }
-    fetchFires();
-    const interval = setInterval(fetchFires, 60_000);
-    return () => clearInterval(interval);
-  }, [authed]);
-
-  // Fetch LLM critical error count for indicator dot
-  useEffect(() => {
-    if (!authed) return;
-    async function fetchLLMErrors() {
-      try {
-        const res = await fetch("/api/llm-monitor/responses?has_critical_errors=true&limit=1");
-        if (!res.ok) return;
-        const json = await res.json();
-        setLlmErrorCount(json.count || 0);
-      } catch {
-        // non-critical
-      }
-    }
-    fetchLLMErrors();
-    const interval = setInterval(fetchLLMErrors, 60_000);
-    return () => clearInterval(interval);
-  }, [authed]);
 
   if (!authed) {
     return (
@@ -103,44 +57,41 @@ export default function DashboardLayout({
 
   return (
     <div className="flex h-screen overflow-hidden">
-      <aside className="w-[180px] shrink-0 border-r border-cream-200 bg-white flex flex-col">
-        <div className="px-4 py-5 flex items-center gap-1.5">
-          <span className="text-accent-terracotta text-lg leading-none">*</span>
-          <Link href="/dashboard" className="font-display text-lg font-semibold tracking-tight text-ink-900">
+      <aside className="w-[200px] shrink-0 border-r border-cream-200 bg-white flex flex-col">
+        <div className="px-4 py-5">
+          <Link
+            href="/dashboard"
+            className="font-display text-lg font-semibold tracking-tight text-ink-900"
+          >
             Beacon
           </Link>
         </div>
-        <nav className="flex-1 px-2 space-y-0.5">
-          {NAV_ITEMS.map((item) => {
-            const isActive =
-              item.href === "/dashboard"
-                ? pathname === "/dashboard"
-                : pathname.startsWith(item.href);
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-colors ${
-                  isActive
-                    ? "bg-cream-100 text-ink-900 font-medium"
-                    : "text-ink-500 hover:text-ink-700 hover:bg-cream-50"
-                }`}
-              >
-                {item.label === "War Room" ? "🚨 " : ""}{item.label}
-                {item.label === "War Room" && activeIncidentCount > 0 && (
-                  <span className="ml-auto text-[10px] bg-red-500 text-white rounded-full min-w-[18px] h-[18px] flex items-center justify-center font-medium leading-none">
-                    {activeIncidentCount}
-                  </span>
-                )}
-                {(item.label === "Brief" || item.label === "Feed") && fireCount > 0 && (
-                  <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
-                )}
-                {item.label === "LLM Intelligence" && llmErrorCount > 0 && (
-                  <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
-                )}
-              </Link>
-            );
-          })}
+        <nav className="flex-1 px-2 overflow-y-auto">
+          {NAV_SECTIONS.map((section) => (
+            <div key={section.title} className="mb-4">
+              <p className="px-3 mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-ink-400">
+                {section.title}
+              </p>
+              <div className="space-y-0.5">
+                {section.items.map((item) => {
+                  const active = navItemActive(pathname, item.href);
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-colors ${
+                        active
+                          ? "bg-cream-100 text-ink-900 font-medium"
+                          : "text-ink-500 hover:text-ink-700 hover:bg-cream-50"
+                      }`}
+                    >
+                      {item.label}
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
         </nav>
         <div className="px-4 py-4 border-t border-cream-200">
           <button
