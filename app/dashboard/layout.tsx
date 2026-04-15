@@ -32,6 +32,12 @@ const NAV_SECTIONS = [
       { href: "/dashboard/discount/geography", label: "Discount Geography" },
     ],
   },
+  {
+    title: "Admin",
+    items: [
+      { href: "/dashboard/settings", label: "Settings" },
+    ],
+  },
 ] as const;
 
 function navItemActive(pathname: string, href: string) {
