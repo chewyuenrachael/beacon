@@ -1,0 +1,52 @@
+{
+    "title": "DHVC Curation Module v1",
+    "models": {
+      "HIGH": "claude-opus-4.7",
+      "MED": "composer-2",
+      "LOW": "composer-2"
+    },
+    "tasks": [
+      {
+        "id": "migration-and-types",
+        "depends_on": [],
+        "complexity": "MED",
+        "subtask_prompt": "Read docs/dhvc-spec.md sections 1 (Data Model Additions). Create supabase/migrations/008_dhvc.sql exactly as specified. Create lib/types/dhvc.ts with the DhvcCandidate, DhvcSource, DhvcReviewStage, DhvcSourceUrl, DhvcScore, and DhvcCandidateDraft types as specified. Update lib/types/beacon-core.ts to add the new entity_type and observation_type values listed in the spec. Update lib/types.ts to re-export from ./types/dhvc. Run `pnpm tsc --noEmit` and fix any type errors before finishing. Do not modify any other files."
+      },
+      {
+        "id": "scoring",
+        "depends_on": ["migration-and-types"],
+        "complexity": "MED",
+        "subtask_prompt": "Read docs/dhvc-spec.md section 2 (Scoring function). Read lib/ambassador-scoring.ts to understand the existing scoring pattern. Create lib/dhvc-scoring.ts following the spec exactly — pure functions, weighted dimensions, clamp100, capped keyword bonuses. Include both computeDhvcScoreFromCandidate (pure) and scoreDhvcCandidate (writes observation). Create tests/dhvc-scoring.test.ts mirroring tests/ambassador-scoring.test.ts — cover empty inputs, year boundaries, school tier transitions, all-sources presence, single-source presence. Run `pnpm vitest tests/dhvc-scoring.test.ts` and ensure all tests pass."
+      },
+      {
+        "id": "scraper-devpost",
+        "depends_on": ["migration-and-types"],
+        "complexity": "MED",
+        "subtask_prompt": "Read docs/dhvc-spec.md section 3.1 (Devpost scraper). Create lib/sources/devpost.ts. Use cheerio + node-fetch (already in package.json). Implement throttling with DEVPOST_MIN_INTERVAL_MS = 500. Hardcode the 15 hackathon URLs from the spec. Implement scrapeHackathonFinalists, dedupe by name+institution, and export discoverFromDevpost: () => Promise<DhvcCandidateDraft[]>. Handle 429 with 30/60/120s exponential backoff. Add tests/sources/devpost.test.ts with mock fetch responses — do not hit the real Devpost in tests. Reference lib/sources/arxiv.ts for the throttling and backoff pattern."
+      },
+      {
+        "id": "scraper-github",
+        "depends_on": ["migration-and-types"],
+        "complexity": "MED",
+        "subtask_prompt": "Read docs/dhvc-spec.md section 3.2 (GitHub scraper). Create lib/sources/github-students.ts. Use the GitHub Search API. Read GITHUB_TOKEN from env if present (10/min unauth, 30/min with token). Query users by location for each top-20 US school. For each user, fetch profile + recent events, filter for 50+ commits in 12 months and at least one repo with 100+ stars. Export discoverFromGitHubStudents: () => Promise<DhvcCandidateDraft[]>. Handle 403 + 429 with exponential backoff. Add tests/sources/github-students.test.ts with mock responses. Expect 60% false-positive rate; that's the accept/reject queue's job to filter."
+      },
+      {
+        "id": "scraper-arxiv-undergrads",
+        "depends_on": ["migration-and-types"],
+        "complexity": "MED",
+        "subtask_prompt": "Read docs/dhvc-spec.md section 3.3 (arXiv undergrads scraper). Create lib/sources/arxiv-undergrads.ts. Reuse the throttle and backoff from lib/sources/arxiv.ts (do not duplicate — import from there or factor out a shared helper). Query cs.LG, cs.CL, cs.AI, cs.SE for the past 12 months. Parse first-author affiliations, filter for top-20 US schools. Cross-reference against the professors table — skip authors whose names match existing professor rows. Export discoverFromArxivUndergrads: () => Promise<DhvcCandidateDraft[]>. Add tests/sources/arxiv-undergrads.test.ts."
+      },
+      {
+        "id": "orchestrator-and-routes",
+        "depends_on": ["scoring", "scraper-devpost", "scraper-github", "scraper-arxiv-undergrads"],
+        "complexity": "HIGH",
+        "subtask_prompt": "Read docs/dhvc-spec.md sections 4 (Orchestrator) and 5 (API routes). Create lib/dhvc-orchestrator.ts implementing runDhvcIngestion that calls all three scrapers, dedupes via persistDraft (which finds-or-creates by github_username, then twitter_handle, then institution_id+name), logs observations for every action, and re-scores after every merge. Create app/api/dhvc/ingest/route.ts, app/api/dhvc/candidates/route.ts, app/api/dhvc/candidates/[id]/route.ts, app/api/dhvc/candidates/[id]/accept/route.ts, app/api/dhvc/candidates/[id]/reject/route.ts. Use Zod schemas in app/api/dhvc/schemas.ts. Follow the {error, code} error shape with the documented codes. Read app/api/ambassadors/route.ts and app/api/outreach/route.ts as reference patterns. Add tests/dhvc-orchestrator.test.ts that mocks the three scrapers and asserts dedup logic, observation writes, and score persistence."
+      },
+      {
+        "id": "dashboard-and-workqueue",
+        "depends_on": ["orchestrator-and-routes"],
+        "complexity": "HIGH",
+        "subtask_prompt": "Read docs/dhvc-spec.md sections 6 (Dashboard UI) and 7 (Workqueue integration). Create app/dashboard/dhvc/page.tsx with three tabs (Pending Review, Accepted, Rejected), filters, sort, action buttons, and a 'Refresh sources' button that POSTs to /api/dhvc/ingest. Create app/dashboard/dhvc/[id]/page.tsx with score breakdown (5 MetricCards mirroring AmbassadorScoreCard), source URLs list, observation timeline, and Accept/Reject buttons. Create app/dashboard/dhvc/new/page.tsx for manual entry. Update lib/workqueue.ts to add a parallel query for high-score pending DHVC candidates and surface them in the workqueue. Update SOURCE_TIE_ORDER to include 'dhvc'. Update app/dashboard/layout.tsx to add a 'DHVC' sidebar entry under Strategic. Run `pnpm vitest tests/workqueue.test.ts` and update the test if needed. Run `pnpm tsc --noEmit` and fix any errors."
+      }
+    ]
+  }
