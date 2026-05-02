@@ -1,0 +1,5 @@
+allowBuilds:
+  esbuild: true
+  sharp: false
+  sqlite3: true
+  unrs-resolver: false
