@@ -10,7 +10,8 @@ export type WorkqueueSourceFeature =
   | "discount"
   | "events"
   | "outreach"
-  | "coverage";
+  | "coverage"
+  | "dhvc";
 
 export interface WorkqueueItem {
   /** Stable id for UI keys and mark-complete payload */
@@ -23,7 +24,11 @@ export interface WorkqueueItem {
   source_feature: WorkqueueSourceFeature;
   /** Target entity for action_completed observation */
   mark_complete: {
-    entity_type: "professor" | "ambassador" | "institution";
+    entity_type:
+      | "professor"
+      | "ambassador"
+      | "institution"
+      | "dhvc_candidate";
     entity_id: string;
   };
 }
