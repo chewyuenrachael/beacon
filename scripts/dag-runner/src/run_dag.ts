@@ -23,7 +23,15 @@
  *   --stream-publish-ms <ms> Throttle live stream publishes (default: 500ms).
  */
 
-import { Agent } from "@cursor/sdk";
+import { Agent, configureRipgrepPath } from "@cursor/sdk";
+import { createRequire } from "node:module";
+
+// WORKAROUND: @cursor/sdk requires explicit ripgrep path configuration.
+// The SDK ships its binary in @cursor/sdk-darwin-arm64 (or platform equivalent).
+// Remove this once the SDK auto-resolves the bundled binary.
+const require = createRequire(import.meta.url);
+const rgPath = require.resolve("@cursor/sdk-darwin-arm64/bin/rg");
+configureRipgrepPath(rgPath);
 import { setMaxListeners } from "node:events";
 import { readFile } from "node:fs/promises";
 import { homedir } from "node:os";
