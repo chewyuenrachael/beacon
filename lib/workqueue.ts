@@ -15,9 +15,10 @@ const SOURCE_TIE_ORDER: Record<WorkqueueSourceFeature, number> = {
   discount: 0,
   ambassador: 1,
   outreach: 2,
-  events: 3,
-  coverage: 4,
-  intelligence: 5,
+  dhvc: 3,
+  events: 4,
+  coverage: 5,
+  intelligence: 6,
 };
 
 /**
@@ -71,45 +72,59 @@ export async function generateWorkqueue(): Promise<WorkqueueItem[]> {
   const nowIso = new Date().toISOString();
 
   // Fix 1: parallelize all independent base queries
-  const [verResult, ambResult, tpResult, profResult, evResult, staleProfResult] =
-    await Promise.all([
-      supabaseAdmin
-        .from("verification_attempts")
-        .select("id,email,claimed_institution,status,country")
-        .in("status", ["pending", "manual_review"])
-        .order("created_at", { ascending: false })
-        .limit(12),
-      supabaseAdmin
-        .from("ambassadors")
-        .select("id,name,email,institution_id,stage,score")
-        .in("stage", ["applied", "under_review"])
-        .order("id", { ascending: true })
-        .limit(12),
-      supabaseAdmin
-        .from("outreach_touchpoints")
-        .select("target_id")
-        .eq("target_type", "professor"),
-      supabaseAdmin
-        .from("professors")
-        .select("id,name,institution_id,recent_relevant_papers_count")
-        .gte("recent_relevant_papers_count", 4)
-        .order("recent_relevant_papers_count", { ascending: false })
-        .limit(20),
-      supabaseAdmin
-        .from("events")
-        .select("id,title,institution_id,scheduled_at,status")
-        .in("status", ["draft", "scheduled"])
-        .gte("scheduled_at", nowIso)
-        .lte("scheduled_at", horizon)
-        .order("scheduled_at", { ascending: true })
-        .limit(10),
-      supabaseAdmin
-        .from("professors")
-        .select("id,name,last_enriched_at,recent_relevant_papers_count")
-        .is("last_enriched_at", null)
-        .order("recent_relevant_papers_count", { ascending: false })
-        .limit(8),
-    ]);
+  const [
+    verResult,
+    ambResult,
+    tpResult,
+    profResult,
+    evResult,
+    staleProfResult,
+    dhvcResult,
+  ] = await Promise.all([
+    supabaseAdmin
+      .from("verification_attempts")
+      .select("id,email,claimed_institution,status,country")
+      .in("status", ["pending", "manual_review"])
+      .order("created_at", { ascending: false })
+      .limit(12),
+    supabaseAdmin
+      .from("ambassadors")
+      .select("id,name,email,institution_id,stage,score")
+      .in("stage", ["applied", "under_review"])
+      .order("id", { ascending: true })
+      .limit(12),
+    supabaseAdmin
+      .from("outreach_touchpoints")
+      .select("target_id")
+      .eq("target_type", "professor"),
+    supabaseAdmin
+      .from("professors")
+      .select("id,name,institution_id,recent_relevant_papers_count")
+      .gte("recent_relevant_papers_count", 4)
+      .order("recent_relevant_papers_count", { ascending: false })
+      .limit(20),
+    supabaseAdmin
+      .from("events")
+      .select("id,title,institution_id,scheduled_at,status")
+      .in("status", ["draft", "scheduled"])
+      .gte("scheduled_at", nowIso)
+      .lte("scheduled_at", horizon)
+      .order("scheduled_at", { ascending: true })
+      .limit(10),
+    supabaseAdmin
+      .from("professors")
+      .select("id,name,last_enriched_at,recent_relevant_papers_count")
+      .is("last_enriched_at", null)
+      .order("recent_relevant_papers_count", { ascending: false })
+      .limit(8),
+    supabaseAdmin
+      .from("dhvc_candidates")
+      .select("id,name,institution_id,score,primary_source")
+      .eq("review_stage", "pending_review")
+      .gte("score->>total", "70")
+      .order("score->>total", { ascending: false })
+      .limit(8),
+  ]);
 
   // --- process verification attempts ---
   if (!verResult.error && verResult.data) {
@@ -249,6 +264,33 @@ export async function generateWorkqueue(): Promise<WorkqueueItem[]> {
       source_feature: "coverage",
       mark_complete: { entity_type: "institution", entity_id: instId },
     });
+  }
+
+  // --- process pending DHVC candidate reviews ---
+  if (!dhvcResult.error && dhvcResult.data) {
+    for (const d of dhvcResult.data) {
+      const total = Number(
+        (d.score as { total?: number } | null)?.total ?? 0
+      );
+      // Spec section 7: priority 72 + min((score - 70) * 0.3, 8) — range 72–80.
+      const priority_score = 72 + Math.min(Math.max(total - 70, 0) * 0.3, 8);
+      const sourceLabel = d.primary_source as string;
+      candidates.push({
+        id: `dhvc-${d.id as string}`,
+        priority_score,
+        title: `DHVC review: ${d.name as string}`,
+        description: `Score ${total} · ${sourceLabel} · ${
+          d.institution_id as string
+        }`,
+        action_url: `/dashboard/dhvc/${d.id as string}`,
+        action_label: "Review candidate",
+        source_feature: "dhvc",
+        mark_complete: {
+          entity_type: "dhvc_candidate",
+          entity_id: d.id as string,
+        },
+      });
+    }
   }
 
   // --- process stale professors ---
