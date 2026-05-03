@@ -1,14 +1,17 @@
 import Parser from "rss-parser";
 import { z } from "zod";
 
-const ARXIV_API = "http://export.arxiv.org/api/query";
+const ARXIV_API = "https://export.arxiv.org/api/query";
 
 /** Minimum gap between arXiv HTTP calls (stack: 1 req / 3s). */
-const ARXIV_MIN_INTERVAL_MS = 3000;
+export const ARXIV_MIN_INTERVAL_MS = 3000;
+
+/** Backoff delays after retryable arXiv failures (mirrors Devpost scraper pattern). */
+const ARXIV_RETRY_BACKOFF_MS = [30_000, 60_000, 120_000] as const;
 
 let lastArxivRequestTime = 0;
 
-async function throttleArxiv(): Promise<void> {
+export async function throttleArxiv(): Promise<void> {
   const now = Date.now();
   const elapsed = now - lastArxivRequestTime;
   if (elapsed < ARXIV_MIN_INTERVAL_MS) {
@@ -17,6 +20,49 @@ async function throttleArxiv(): Promise<void> {
     );
   }
   lastArxivRequestTime = Date.now();
+}
+
+const ARXIV_FETCH_HEADERS = {
+  "user-agent": "Beacon/0.1 (internal; +https://example.invalid)",
+} as const;
+
+/**
+ * GET the arXiv Atom API with shared throttling and retry/backoff on 429 / 5xx.
+ */
+export async function fetchArxivApi(
+  params: Record<string, string>,
+  init?: RequestInit
+): Promise<string> {
+  const url = new URL(ARXIV_API);
+  for (const [k, v] of Object.entries(params)) {
+    url.searchParams.set(k, v);
+  }
+
+  const maxAttempts = 1 + ARXIV_RETRY_BACKOFF_MS.length;
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    await throttleArxiv();
+    const res = await fetch(url.toString(), {
+      ...init,
+      headers: ARXIV_FETCH_HEADERS,
+    });
+
+    if (res.ok) {
+      return res.text();
+    }
+
+    const retryable =
+      res.status === 429 || res.status === 503 || res.status >= 500;
+    if (retryable && attempt < ARXIV_RETRY_BACKOFF_MS.length) {
+      await new Promise((r) =>
+        setTimeout(r, ARXIV_RETRY_BACKOFF_MS[attempt])
+      );
+      continue;
+    }
+
+    throw new Error(`arXiv API HTTP ${res.status}`);
+  }
+
+  throw new Error("arXiv API: exhausted retries");
 }
 
 /**
@@ -95,24 +141,14 @@ export async function fetchRecentPapers(
   arxivAuthorId: string,
   maxResults = 20
 ): Promise<ArxivPaper[]> {
-  await throttleArxiv();
-
   const searchQuery = buildArxivAuthorSearchQuery(arxivAuthorId);
-  const url = new URL(ARXIV_API);
-  url.searchParams.set("search_query", searchQuery);
-  url.searchParams.set("start", "0");
-  url.searchParams.set("max_results", String(maxResults));
-  url.searchParams.set("sortBy", "submittedDate");
-  url.searchParams.set("sortOrder", "descending");
-
-  const res = await fetch(url.toString(), {
-    headers: { "user-agent": "Beacon/0.1 (internal; +https://example.invalid)" },
+  const xml = await fetchArxivApi({
+    search_query: searchQuery,
+    start: "0",
+    max_results: String(maxResults),
+    sortBy: "submittedDate",
+    sortOrder: "descending",
   });
-  if (!res.ok) {
-    throw new Error(`arXiv API HTTP ${res.status}`);
-  }
-
-  const xml = await res.text();
   const parser = new Parser({
     customFields: { item: ["summary", "published", "id", "arxiv:doi"] },
   });
