@@ -13,6 +13,7 @@ const NAV_SECTIONS = [
       { href: "/dashboard/workqueue", label: "Workqueue" },
       { href: "/dashboard/professors", label: "Professors" },
       { href: "/dashboard/outreach", label: "Outreach" },
+      { href: "/dashboard/dhvc", label: "DHVC Candidates" },
     ],
   },
   {
