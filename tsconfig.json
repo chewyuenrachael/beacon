@@ -37,6 +37,7 @@
   ],
   "exclude": [
     "node_modules",
+    "scripts/dag-runner",
     "components/_forge-reference",
     "app/api/cron",
     "app/api/ingest",
