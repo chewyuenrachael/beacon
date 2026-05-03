@@ -42,11 +42,18 @@ export type ObservationType =
   | "action_completed"
   | "event_created"
   | "event_updated"
-  | "event_attendee_recorded";
+  | "event_attendee_recorded"
+  | "dhvc_candidate_discovered"
+  | "dhvc_candidate_enriched"
+  | "dhvc_candidate_scored"
+  | "dhvc_candidate_accepted"
+  | "dhvc_candidate_rejected"
+  | "dhvc_signal_observed";
 
 export type ObservationSource =
   | "arxiv"
   | "github"
+  | "devpost"
   | "sheerid"
   | "manual"
   | "typeform"
@@ -67,7 +74,8 @@ export interface Observation {
     | "outreach"
     | "event"
     | "resource"
-    | "verification";
+    | "verification"
+    | "dhvc_candidate";
   entity_id: string;
   observation_type: ObservationType;
   payload: Record<string, unknown>;
