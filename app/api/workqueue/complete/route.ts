@@ -6,7 +6,12 @@ const bodySchema = z.object({
   item_id: z.string().min(1),
   title: z.string().min(1),
   source_feature: z.string().min(1),
-  entity_type: z.enum(["professor", "ambassador", "institution"]),
+  entity_type: z.enum([
+    "professor",
+    "ambassador",
+    "institution",
+    "dhvc_candidate",
+  ]),
   entity_id: z.string().min(1),
 });
 
